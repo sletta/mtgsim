@@ -1,12 +1,22 @@
 use crate::card::Card;
 use rand::distributions::{Distribution, Uniform};
 
-#[derive(Debug)]
-pub struct CardPile {
-    pub cards: Vec<Card>
+#[derive(Debug, Clone)]
+pub struct Zone {
+    name: String,
+    cards: Vec<Card>
 }
 
-impl CardPile {
+impl Zone {
+
+    pub fn new(name : &str) -> Self {
+        return Self { name: name.to_string(), cards: Vec::new() };
+    }
+
+    pub fn add(&mut self, card : Card) {
+        self.cards.push(card);
+    }
+
     pub fn shuffle(&mut self) {
         let mut random_generator = rand::thread_rng();
         let random = Uniform::from(0..self.cards.len());
@@ -17,13 +27,15 @@ impl CardPile {
         }
     }
 
+    pub fn draw(&mut self) -> Option<Card> {
+        return self.cards.pop();
+    }
+
     pub fn dump(&self) {
-        println!("Dump of CardPile:");
-        println!(" - # of cards: {}", self.cards.len());
+        println!("Zone: {}, {} cards", self.name, self.cards.len());
         for card in self.cards.iter() {
             println!("   {:?}", card);
         }
-        println!("----- End of Library -----");
     }
 }
 

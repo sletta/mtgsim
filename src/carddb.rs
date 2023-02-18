@@ -1,15 +1,11 @@
-
-#[derive(Debug)]
-struct Entry {
-    name: String,
-    cmc: i32,
-}
+use crate::mana;
+use crate::card;
 
 pub struct DB {
-    entries : std::collections::HashMap<String, Entry>,
+    entries : std::collections::HashMap<String, card::Card>,
 }
 
-fn nameToFile(name : &str) -> String {
+fn name_to_file(name : &str) -> String {
     return format!("cards.db/{}.json", name).to_owned();
 }
 
@@ -19,9 +15,9 @@ impl DB {
         return Self { entries: std::collections::HashMap::new() }
     }
 
-    pub fn load(&mut self, name : &str) {
+    pub fn load(&mut self, name : &str) -> Option<&card::Card> {
         println!("loading: {}", name);
-        let file_name = nameToFile(name);
+        let file_name = name_to_file(name);
         let mut contents : Option<String> = None;
 
         if !std::path::Path::new(&file_name).exists() {
@@ -39,11 +35,14 @@ impl DB {
         let json_object = json::parse(&contents.unwrap()).unwrap_or_else(|e| panic!("failed to parse json, file_name={:?}, error={:?}", file_name, e));
         assert!(json_object.is_object());
 
-        let entry = Entry {
+        let entry = card::Card {
             name: json_object["name"].to_string(),
-            cmc: json_object["cmc"].as_f32().expect("cmc is not a number!") as i32
+            cmc: json_object["cmc"].as_f32().expect("cmc is not a number!") as i32,
+            mana_cost: mana::Cost::parse(&json_object["mana_cost"].to_string()).unwrap_or_else(|e| panic!("failed to parse mana_cost, '{:?}', error={:?}", json_object["mana_cost"], e))
         };
 
-        println!("{:?}", entry);
+        self.entries.insert(name.to_string(), entry);
+
+        return self.entries.get(name);
     }
 }

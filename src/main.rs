@@ -1,14 +1,11 @@
-// extern crate rand;
-
-// mod card;
-// mod cardpile;
 mod carddb;
+mod mana;
+mod card;
+mod game;
+mod zone;
 
 use std::io::BufRead;
 use regex::Regex;
-
-// use crate::card::Card;
-// use crate::cardpile::CardPile;
 
 #[derive(Debug)]
 struct DeckListEntry {
@@ -61,9 +58,17 @@ fn main() {
 
     let deck_list = read_deck_list(&deck_list_name.unwrap()).unwrap();
 
+    let mut game = game::Game::new();
+
     let mut db = carddb::DB::new();
     for entry in &deck_list {
-        db.load(&entry.name);
+        let card : &card::Card = db.load(&entry.name).expect("loading card failed!");
+        for _i in 0..entry.count {
+            game.library.add(card.clone());
+        }
     }
+
+    game.setup();
+
     // carddb::download();
 }
