@@ -15,7 +15,7 @@ pub const RED : Mana        = Mana { black: false, blue: false, green: false, re
 pub const WHITE : Mana      = Mana { black: false, blue: false, green: false, red: false, white: true  };
 
 #[derive(Clone)]
-pub struct Cost {
+pub struct Pool {
     sequence: Vec<Mana>
 }
 
@@ -62,7 +62,27 @@ impl std::fmt::Debug for Mana {
     }
 }
 
-impl std::fmt::Debug for Cost {
+impl Mana {
+    pub fn new() -> Self {
+        return COLORLESS.clone();
+    }
+
+    pub fn set_from_string(&mut self, value : &str) {
+        match value {
+            "C" => {
+                // do nothing..
+            }
+            "B" => self.black = true,
+            "U" => self.blue = true,
+            "G" => self.green = true,
+            "R" => self.red = true,
+            "W" => self.white = true,
+            _ => panic!("bad input, '{}'", value)
+        }
+    }
+}
+
+impl std::fmt::Debug for Pool {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
 
         if self.sequence.len() == 0 {
@@ -80,8 +100,13 @@ impl std::fmt::Debug for Cost {
     }
 }
 
-impl Cost {
-    pub fn parse(cost : &str) -> Result<Self, String> {
+impl Pool {
+
+    pub fn new() -> Self {
+        return Self { sequence: Vec::new() };
+    }
+
+    pub fn parse_cost(cost : &str) -> Result<Self, String> {
         let re = regex::Regex::new(r"([0-9BCGRUW/]+)").expect("failed to crate manacost reggexp");
         let mut colors : Vec<Mana> = Vec::new();
         for cap in re.find_iter(cost) {
@@ -102,7 +127,7 @@ impl Cost {
             }
         }
 
-        let mana_cost = Cost { sequence: colors };
+        let mana_cost = Pool { sequence: colors };
         return Ok(mana_cost);
     }
 }

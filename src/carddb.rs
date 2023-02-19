@@ -9,6 +9,25 @@ fn name_to_file(name : &str) -> String {
     return format!("cards.db/{}.json", name).to_owned();
 }
 
+fn parse_produced_mana(value : &json::JsonValue) -> Option<mana::Mana> {
+    if value.is_array() {
+        let mut colors = mana::Mana::new();
+        for i in 0..value.len() {
+            colors.set_from_string(value[i].to_string().as_str());
+        }
+        return Some(colors);
+    }
+    return None;
+}
+
+fn parse_enters_tapped(name : &str, oracle_text : &str) -> bool {
+    let pattern = format!("{} enters the battlefield tapped.", name);
+    match oracle_text.to_lowercase().find(pattern.as_str()) {
+        Some(_i) => return true,
+        None => return false
+    }
+}
+
 impl DB {
 
     pub fn new() -> Self {
@@ -38,7 +57,10 @@ impl DB {
         let entry = card::Card {
             name: json_object["name"].to_string(),
             cmc: json_object["cmc"].as_f32().expect("cmc is not a number!") as i32,
-            mana_cost: mana::Cost::parse(&json_object["mana_cost"].to_string()).unwrap_or_else(|e| panic!("failed to parse mana_cost, '{:?}', error={:?}", json_object["mana_cost"], e))
+            mana_cost: mana::Pool::parse_cost(&json_object["mana_cost"].to_string()).unwrap_or_else(|e| panic!("failed to parse mana_cost, '{:?}', error={:?}", json_object["mana_cost"], e)),
+            types: json_object["type_line"].to_string(),
+            produced_mana: parse_produced_mana(&json_object["produced_mana"]),
+            enters_tapped: parse_enters_tapped(&name, &json_object["oracle_text"].to_string()),
         };
 
         self.entries.insert(name.to_string(), entry);

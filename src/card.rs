@@ -4,5 +4,10 @@ use crate::mana;
 pub struct Card {
     pub name: String,
     pub cmc: i32,
-    pub mana_cost: mana::Cost
+    pub mana_cost: mana::Pool,
+    pub types: String,
+
+    pub produced_mana: Option<mana::Mana>,
+    pub enters_tapped : bool,
+
 }
