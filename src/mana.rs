@@ -1,4 +1,16 @@
 use itertools::Itertools;
+use enumflags2::{bitflags, make_bitflags, BitFlags};
+
+// #[bitflags]
+// #[repr(u8)]
+// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// enum Color {
+//     Black = 0x01,
+//     Blue = 0x02,
+//     Green = 0x04,
+//     Red = 0x08,
+//     White = 0x10
+// }
 
 const BLACK_FLAG : u32   = 0x01;
 const BLUE_FLAG : u32    = 0x02;

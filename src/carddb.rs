@@ -54,11 +54,14 @@ impl DB {
         let json_object = json::parse(&contents.unwrap()).unwrap_or_else(|e| panic!("failed to parse json, file_name={:?}, error={:?}", file_name, e));
         assert!(json_object.is_object());
 
+        let type_line = json_object["type_line"].to_string();
+
         let entry = card::Card {
             name: json_object["name"].to_string(),
             cmc: json_object["cmc"].as_f32().expect("cmc is not a number!") as i32,
             mana_cost: mana::Pool::parse_cost(&json_object["mana_cost"].to_string()).unwrap_or_else(|e| panic!("failed to parse mana_cost, '{:?}', error={:?}", json_object["mana_cost"], e)),
-            types: json_object["type_line"].to_string(),
+            type_string: type_line.clone(),
+            types: card::parse_types(&type_line),
             produced_mana: parse_produced_mana(&json_object["produced_mana"]),
             enters_tapped: parse_enters_tapped(&name, &json_object["oracle_text"].to_string()),
         };
