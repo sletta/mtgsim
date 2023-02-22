@@ -1,6 +1,6 @@
 use crate::zone::Zone;
 use crate::card;
-use crate::mana;
+// use crate::mana;
 
 #[derive(Clone)]
 pub struct Game {
@@ -25,6 +25,7 @@ impl Game {
     pub fn setup(&mut self) {
         self.library.shuffle();
         self.draw_cards(7);
+        self.hand.sort();
         self.dump();
     }
 

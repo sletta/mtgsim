@@ -31,6 +31,10 @@ impl Zone {
         return self.cards.pop();
     }
 
+    pub fn sort(&mut self) {
+        self.cards.sort_by(|a, b| a.cmc.cmp(&b.cmc));
+    }
+
     pub fn dump(&self) {
         println!("Zone: {}, {} cards", self.name, self.cards.len());
         for card in self.cards.iter() {

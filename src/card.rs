@@ -37,25 +37,25 @@ pub struct Card {
 pub fn parse_types(types : &str) -> BitFlags<Types, u8> {
     let lower_cased = types.to_lowercase();
     let mut flags = BitFlags::empty();
-    if types.find("land").is_some() {
+    if lower_cased.find("land").is_some() {
         flags |= Types::Land;
     }
-    if types.find("creature").is_some() {
+    if lower_cased.find("creature").is_some() {
         flags |= Types::Creature;
     }
-    if types.find("planeswalker").is_some() {
+    if lower_cased.find("planeswalker").is_some() {
         flags |= Types::Planeswalker;
     }
-    if types.find("artifact").is_some() {
+    if lower_cased.find("artifact").is_some() {
         flags |= Types::Artifact;
     }
-    if types.find("enchantment").is_some() {
+    if lower_cased.find("enchantment").is_some() {
         flags |= Types::Enchantment;
     }
-    if types.find("sorcery").is_some() {
+    if lower_cased.find("sorcery").is_some() {
         flags |= Types::Sorcery;
     }
-    if types.find("instant").is_some() {
+    if lower_cased.find("instant").is_some() {
         flags |= Types::Instant;
     }
     return flags;

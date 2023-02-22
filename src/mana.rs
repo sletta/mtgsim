@@ -1,33 +1,21 @@
 use itertools::Itertools;
 use enumflags2::{bitflags, make_bitflags, BitFlags};
+// use std::time::{Duration, Instant};
 
-// #[bitflags]
-// #[repr(u8)]
-// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-// enum Color {
-//     Black = 0x01,
-//     Blue = 0x02,
-//     Green = 0x04,
-//     Red = 0x08,
-//     White = 0x10
-// }
-
-const BLACK_FLAG : u32   = 0x01;
-const BLUE_FLAG : u32    = 0x02;
-const GREEN_FLAG : u32   = 0x04;
-const RED_FLAG : u32     = 0x08;
-const WHITE_FLAG : u32   = 0x10;
-
-pub const COLORLESS : Mana  = Mana { flags: 0x0 };
-pub const BLACK : Mana      = Mana { flags: BLACK_FLAG };
-pub const BLUE : Mana       = Mana { flags: BLUE_FLAG };
-pub const GREEN : Mana      = Mana { flags: GREEN_FLAG };
-pub const RED : Mana        = Mana { flags: RED_FLAG };
-pub const WHITE : Mana      = Mana { flags: WHITE_FLAG };
+#[bitflags]
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Color {
+    Black       = 1 << 0,
+    Blue        = 1 << 1,
+    Green       = 1 << 2,
+    Red         = 1 << 3,
+    White       = 1 << 4
+}
 
 #[derive(Eq, PartialEq, Clone)]
 pub struct Mana {
-    flags : u32
+    colors : BitFlags<Color>
 }
 
 #[derive(Clone)]
@@ -35,22 +23,30 @@ pub struct Pool {
     sequence: Vec<Mana>
 }
 
+pub const COLORLESS : Mana  = Mana { colors: BitFlags::EMPTY };
+pub const BLACK : Mana      = Mana { colors: make_bitflags!(Color::{ Black }) };
+pub const BLUE : Mana       = Mana { colors: make_bitflags!(Color::{ Blue }) };
+pub const GREEN : Mana      = Mana { colors: make_bitflags!(Color::{ Green }) };
+pub const RED : Mana        = Mana { colors: make_bitflags!(Color::{ Red }) };
+pub const WHITE : Mana      = Mana { colors: make_bitflags!(Color::{ White }) };
+pub const ALL : Mana        = Mana { colors: make_bitflags!(Color::{ Black | Blue | Green | Red | White }) };
+
 impl std::fmt::Debug for Mana {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let mut colors = Vec::new();
-        if self.flags & BLACK_FLAG != 0 {
+        if self.colors.contains(Color::Black) {
             colors.push("B");
         }
-        if self.flags & BLUE_FLAG != 0 {
+        if self.colors.contains(Color::Blue) {
             colors.push("U");
         }
-        if self.flags & GREEN_FLAG != 0 {
+        if self.colors.contains(Color::Green) {
             colors.push("G");
         }
-        if self.flags & RED_FLAG != 0 {
+        if self.colors.contains(Color::Red) {
             colors.push("R");
         }
-        if self.flags & WHITE_FLAG != 0 {
+        if self.colors.contains(Color::White) {
             colors.push("W");
         }
 
@@ -83,11 +79,11 @@ impl std::fmt::Debug for Pool {
         if self.sequence.len() == 0 {
             return write!(f, "n/a");
         }
-        let colorless_cost = self.sequence.iter().filter(|&mana| *mana == COLORLESS).count();
+        let colorless_cost = self.sequence.iter().filter(|&mana| mana.is_colorless()).count();
         if colorless_cost > 0 {
             write!(f, "{{{}}}", colorless_cost).expect("formatting failed");
         }
-        for i in self.sequence.iter().filter(|&mana| *mana != COLORLESS) {
+        for i in self.sequence.iter().filter(|&mana| !mana.is_colorless()) {
             write!(f, "{:?}", i).expect("formatting failed!");
         }
         return Ok(());
@@ -99,38 +95,42 @@ impl Mana {
         return COLORLESS.clone();
     }
 
+    pub fn make_mono(a : Color) -> Self {
+        return Mana { colors: BitFlags::empty() | a };
+    }
+
+    pub fn make_dual(a : Color, b : Color) -> Self {
+        return Mana { colors: a | b };
+    }
+
     pub fn set_from_string(&mut self, value : &str) {
         match value {
             "C" => {
                 // do nothing..
             }
-            "B" => self.flags |= BLACK_FLAG,
-            "U" => self.flags |= BLUE_FLAG,
-            "G" => self.flags |= GREEN_FLAG,
-            "R" => self.flags |= RED_FLAG,
-            "W" => self.flags |= WHITE_FLAG,
+            "B" => self.colors |= Color::Black,
+            "U" => self.colors |= Color::Blue,
+            "G" => self.colors |= Color::Green,
+            "R" => self.colors |= Color::Red,
+            "W" => self.colors |= Color::White,
             _ => panic!("bad input, '{}'", value)
         }
     }
 
     pub fn is_colorless(&self) -> bool {
-        return self.flags == 0;
+        return self.colors.is_empty();
     }
 
     pub fn is_monocolor(&self) -> bool {
-        return self.flags == BLACK_FLAG
-            || self.flags == BLUE_FLAG
-            || self.flags == GREEN_FLAG
-            || self.flags == RED_FLAG
-            || self.flags == WHITE_FLAG;
+        return self.colors.exactly_one() != None;
     }
 
     pub fn can_pay_for(&self, other : &Mana) -> bool {
-        return other.flags == 0 || ((self.flags & other.flags) != 0);
+        return other.is_colorless() || self.colors.intersects(other.colors)
     }
 
     pub fn can_pay_for_exactly(&self, other : &Mana) -> bool {
-        return self.flags == other.flags && (self.is_colorless() || self.is_monocolor());
+        return self.colors == other.colors && (self.is_colorless() || self.is_monocolor());
     }
 }
 
@@ -248,14 +248,13 @@ mod tests {
         assert!(RED.can_pay_for(&COLORLESS));
         assert!(WHITE.can_pay_for(&COLORLESS));
 
-        let all = Mana { flags: BLACK_FLAG | BLUE_FLAG | GREEN_FLAG | RED_FLAG | WHITE_FLAG };
-        assert!(all.can_pay_for(&BLACK));
-        assert!(all.can_pay_for(&BLUE));
-        assert!(all.can_pay_for(&GREEN));
-        assert!(all.can_pay_for(&RED));
-        assert!(all.can_pay_for(&WHITE));
+        assert!(ALL.can_pay_for(&BLACK));
+        assert!(ALL.can_pay_for(&BLUE));
+        assert!(ALL.can_pay_for(&GREEN));
+        assert!(ALL.can_pay_for(&RED));
+        assert!(ALL.can_pay_for(&WHITE));
 
-        let selesnya = Mana { flags: WHITE_FLAG | GREEN_FLAG };
+        let selesnya = Mana::make_dual(Color::White, Color::Green);
         assert!(!selesnya.can_pay_for(&BLACK));
         assert!(!selesnya.can_pay_for(&BLUE));
         assert!(selesnya.can_pay_for(&GREEN));
@@ -284,14 +283,13 @@ mod tests {
         assert!(!RED.can_pay_for_exactly(&COLORLESS));
         assert!(!WHITE.can_pay_for_exactly(&COLORLESS));
 
-        let all = Mana { flags: BLACK_FLAG | BLUE_FLAG | GREEN_FLAG | RED_FLAG | WHITE_FLAG };
-        assert!(!all.can_pay_for_exactly(&BLACK));
-        assert!(!all.can_pay_for_exactly(&BLUE));
-        assert!(!all.can_pay_for_exactly(&GREEN));
-        assert!(!all.can_pay_for_exactly(&RED));
-        assert!(!all.can_pay_for_exactly(&WHITE));
+        assert!(!ALL.can_pay_for_exactly(&BLACK));
+        assert!(!ALL.can_pay_for_exactly(&BLUE));
+        assert!(!ALL.can_pay_for_exactly(&GREEN));
+        assert!(!ALL.can_pay_for_exactly(&RED));
+        assert!(!ALL.can_pay_for_exactly(&WHITE));
 
-        let selesnya = Mana { flags: WHITE_FLAG | GREEN_FLAG };
+        let selesnya = Mana::make_dual(Color::White, Color::Green);
         assert!(!selesnya.can_pay_for_exactly(&BLACK));
         assert!(!selesnya.can_pay_for_exactly(&BLUE));
         assert!(!selesnya.can_pay_for_exactly(&GREEN));
@@ -339,7 +337,7 @@ mod tests {
         assert!(!one_of_each_color.can_pay_for(&Pool { sequence: vec![ RED, RED ] }));
         assert!(!one_of_each_color.can_pay_for(&Pool { sequence: vec![ WHITE, WHITE ] }));
 
-        let rakdos = Pool { sequence: vec![ Mana { flags: BLACK_FLAG | RED_FLAG } ] };
+        let rakdos = Pool { sequence: vec![ Mana::make_dual(Color::Red, Color::Black) ] };
         assert!(rakdos.can_pay_for(&Pool { sequence: vec![ BLACK] }));
         assert!(!rakdos.can_pay_for(&Pool { sequence: vec![ BLUE ] }));
         assert!(!rakdos.can_pay_for(&Pool { sequence: vec![ GREEN ] }));
