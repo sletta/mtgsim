@@ -1,0 +1,30 @@
+[ 
+
+{
+    "name": "Armorcraft Judge",
+    "draw": "on-cast",
+    "count": [1, 2, 2, 3, 3, 3, 4, 4, 5, 6]
+},
+{
+    "name": "Commander's Sphere",
+    "ramp": "mana-rock",
+    "produces": "{B/G/R/W/U}"
+},
+{
+    "name": "Mask of Griselbrand",
+    "draw": "per-turn",
+    "count": [0, 0, 0, 0, 0, 0, 3, 5, 7]
+},
+{
+    "name": "Rampant Growth",
+    "ramp": "land-fetch",
+    "land_type": "basic land"
+},
+{
+    "name": "Sol Ring",
+    "ramp": "mana-rock",
+    "produces": "{C}{C}"
+}
+
+]
+    

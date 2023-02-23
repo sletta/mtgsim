@@ -2,7 +2,7 @@ use crate::mana;
 use crate::card;
 
 pub struct DB {
-    entries : std::collections::HashMap<String, card::Card>,
+    pub entries : std::collections::HashMap<String, card::Card>,
 }
 
 fn name_to_file(name : &str) -> String {
@@ -27,6 +27,24 @@ fn parse_enters_tapped(name : &str, oracle_text : &str) -> bool {
         None => return false
     }
 }
+
+
+fn parse_card_metadata(mut card : &card::Card, object : &json::JsonValue) {
+    let ramp_string = &object["ramp"];
+    if ramp_string.is_string() {
+        println!("{:?} is a ramp card, type={:?}", card.name, ramp_string);
+    } else if !ramp_string.is_empty() {
+        panic!("bad 'ramp' string for '{:?}'", object);
+    }
+
+    let draw_string = &object["draw"];
+    if draw_string.is_string() {
+        println!("{:?} is a draw card, type={:?}", card.name, draw_string);
+    } else if !draw_string.is_empty() {
+        panic!("bad 'draw' string for '{:?}'", object);
+    }
+}
+
 
 impl DB {
 
@@ -70,4 +88,71 @@ impl DB {
 
         return self.entries.get(name);
     }
+
+    pub fn load_metadata(&mut self, name : &str) {
+        println!("loading metadata from: '{:?}", name);
+        let metadata_json = std::fs::read_to_string(&name).unwrap_or_else(|e| panic!("failed to load file, file={:?}, error={:?}", name, e));
+        let json = json::parse(&metadata_json).unwrap_or_else(|e| panic!("failed to parse json, file_name={:?}, error={:?}", name, e));
+
+        assert!(json.is_array());
+
+        for (key, value) in self.entries.iter_mut() {
+            for object in json.members() {
+                let name = object["name"].to_string();
+                if key.eq(&name.to_lowercase()) {
+                    parse_card_metadata(value, object);
+                }
+            }
+        }
+
+        //     let &card = self.entries.get(name.to_lowercase()).unwrap_or_else()
+        // }
+    }
 }
+
+/*
+    The different classes and properties:
+
+    * "name" : String
+        -> Card name, exact match
+
+    * "enters_tapped" : bool
+        -> self explanatory.
+
+    * "ramp" : String
+        -> used ot indicate ramp spells, will be one of the following:
+
+        "mana-rock"
+            -> can be tapped for mana, Sol Ring, etc. Requires
+               additional properties:
+
+            "produces" : String
+                -> Mana pool string, "{U/B}" and the like
+
+        "land-fetch" -> fetches lands in library, also includes sub
+                        properties:
+
+            * "land_type" : String
+
+    * "draw" : String
+        -> the category that draws us cards, will be one of the
+           following:
+
+        "on-cast"
+            -> triggers when cast / etb
+
+        "per-turn"
+            -> triggers on every turn
+
+        -> In addition, "draw" type spells needs the following property
+           set:
+
+        "count" : Array<int>
+            -> an array outlining the various amounts of cards the spell
+               can draw. While a "Phyerxian Arena" is an "per-turn" spell
+               that consistently draws 1 additional card, cards
+               like "Armorcraft Judge", have much more complex
+               interaction and thus the array outlines the probabilities
+
+*/
+

@@ -37,6 +37,7 @@ fn main() {
 
     let args: Vec<String> = std::env::args().collect();
     let mut deck_list_name : Option<String> = None;
+    let mut card_metadata_name : Option<String> = None;
 
     let mut skip_next = false;
     for i in 0..args.len() {
@@ -48,6 +49,9 @@ fn main() {
         if arg == "--deck-list" && i < args.len() - 1 {
             deck_list_name = Some(args[i+1].clone());
             skip_next = true;
+        } else if arg == "--card-metadata" && i < args.len() - 1 {
+            card_metadata_name = Some(args[i+1].clone());
+            skip_next = true;
         }
     }
 
@@ -56,19 +60,28 @@ fn main() {
         return;
     }
 
-    let deck_list = read_deck_list(&deck_list_name.unwrap()).unwrap();
+    // if card_metadata_name.is_none() {
+    //     println("missing --card-metadata [json-file] argument!");
+    //     return;
+    // }
 
-    let mut game = game::Game::new();
+    let deck_list = read_deck_list(&deck_list_name.unwrap()).unwrap();
 
     let mut db = carddb::DB::new();
     for entry in &deck_list {
-        let card : &card::Card = db.load(&entry.name).expect("loading card failed!");
+        db.load(&entry.name).expect("loading card failed!");
+    }
+
+    db.load_metadata(&card_metadata_name.unwrap());
+
+    let mut game = game::Game::new();
+    for entry in &deck_list {
+        let card : &card::Card = &db.entries[&entry.name];
         for _i in 0..entry.count {
             game.library.add(card.clone());
         }
     }
 
-    game.setup();
+    // game.setup();
 
-    // carddb::download();
 }
