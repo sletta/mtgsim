@@ -68,11 +68,12 @@ fn main() {
     let deck_list = read_deck_list(&deck_list_name.unwrap()).unwrap();
 
     let mut db = carddb::DB::new();
+
+    db.load_metadata(&card_metadata_name.unwrap());
+
     for entry in &deck_list {
         db.load(&entry.name).expect("loading card failed!");
     }
-
-    db.load_metadata(&card_metadata_name.unwrap());
 
     let mut game = game::Game::new();
     for entry in &deck_list {
@@ -82,6 +83,6 @@ fn main() {
         }
     }
 
-    // game.setup();
+    game.setup();
 
 }

@@ -14,24 +14,32 @@ pub enum Types {
     Instant = 0x40,
 }
 
-// const LAND_FLAG : u32           = 0x01;
-// const CREATURE_FLAG : u32       = 0x02;
-// const PLANESWALKER_FLAG : u32   = 0x04;
-// const ARTIFACT_FLAG : u32       = 0x08;
-// const ENCHANTMENT_FLAG : u32    = 0x10;
-// const SORCERY_FLAG : u32        = 0x20;
-// const INSTANT_FLAG : u32        = 0x40;
+#[derive(Debug, Clone)]
+pub enum Ramp {
+    ManaProducer(mana::Pool),
+    LandFetch(Vec<String>)
+}
+
+#[derive(Debug, Clone)]
+pub enum Draw {
+    OneShot(Vec<i32>),
+    PerTurn(Vec<i32>),
+}
 
 #[derive(Debug, Clone)]
 pub struct Card {
     pub name: String,
     pub cmc: i32,
-    pub mana_cost: mana::Pool,
+    pub mana_cost: Option<mana::Pool>,
     pub type_string: String,
     pub types: BitFlags<Types>,
 
     pub produced_mana: Option<mana::Mana>,
     pub enters_tapped : bool,
+
+    pub ramp : Option<Ramp>,
+    pub draw : Option<Draw>,
+    pub land_mana : Option<mana::Pool>
 }
 
 pub fn parse_types(types : &str) -> BitFlags<Types, u8> {

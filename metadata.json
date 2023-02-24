@@ -1,30 +1,24 @@
 [ 
 
-{
-    "name": "Armorcraft Judge",
-    "draw": "on-cast",
-    "count": [1, 2, 2, 3, 3, 3, 4, 4, 5, 6]
-},
-{
-    "name": "Commander's Sphere",
-    "ramp": "mana-rock",
-    "produces": "{B/G/R/W/U}"
-},
-{
-    "name": "Mask of Griselbrand",
-    "draw": "per-turn",
-    "count": [0, 0, 0, 0, 0, 0, 3, 5, 7]
-},
-{
-    "name": "Rampant Growth",
-    "ramp": "land-fetch",
-    "land_type": "basic land"
-},
-{
-    "name": "Sol Ring",
-    "ramp": "mana-rock",
-    "produces": "{C}{C}"
-}
+{   "name": "Forest",               "land": "mana-producer",    "produces": "{G}" },
+{   "name": "Island",               "land": "mana-producer",    "produces": "{U}" },
+{   "name": "Mountain",             "land": "mana-producer",    "produces": "{R}" },
+{   "name": "Plains",               "land": "mana-producer",    "produces": "{W}" },
+{   "name": "Swamp",                "land": "mana-producer",    "produces": "{B}" },
+{   "name": "Wastes",               "land": "mana-producer",    "produces": "{C}" },
+
+{   "name": "Rampant Growth",       "ramp": "land-fetch",       "land_type": "basic land" },
+{   "name": "Vastwood Surge",       "ramp": "land-fetch",       "land_type": [ "basic land", "basic land" ] },
+
+{   "name": "Commander's Sphere",   "ramp": "mana-producer",    "produces": "{B/G/R/W/U}" },
+{   "name": "Sol Ring",             "ramp": "mana-producer",    "produces": "{C}{C}" },
+
+{   "name": "Armorcraft Judge",     "draw": "one-shot",         "count": [1, 2, 2, 3, 3, 3, 4, 4, 5, 6] },
+{   "name": "Harmonize",            "draw": "one-shot",         "count": 3 },
+
+{   "name": "Elemental Bond",       "draw": "per-turn",         "count": [0, 0, 1, 1, 1, 1, 2, 2, 3, 4] },
+{   "name": "Mask of Griselbrand",  "draw": "per-turn",         "count": [0, 0, 0, 0, 0, 0, 3, 5, 7] },
+{   "name": "Phyrexian Arena",      "draw": "per-turn",         "count": 1 }
 
 ]
     

@@ -149,6 +149,14 @@ impl Pool {
         let mut colors : Vec<Mana> = Vec::new();
         for cap in re.find_iter(cost) {
             let value = cap.as_str();
+            if value.contains("/") {
+                let mut mana = Mana::new();
+                for i in value.split('/') {
+                    mana.set_from_string(i);
+                }
+                colors.push(mana);
+                continue;
+            }
             match value {
                 "C" => colors.push(COLORLESS),
                 "B" => colors.push(BLACK),
@@ -163,6 +171,10 @@ impl Pool {
                     }
                 }
             }
+        }
+
+        if colors.len() == 0 {
+            return Err(format!("invalid mana cost... {:?}", cost));
         }
 
         let mana_cost = Pool { sequence: colors };
