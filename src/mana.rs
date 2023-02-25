@@ -1,5 +1,8 @@
+#[allow(unused_imports)]
 use itertools::Itertools;
-use enumflags2::{bitflags, make_bitflags, BitFlags};
+
+use enumflags2::{bitflags, BitFlags};
+
 // use std::time::{Duration, Instant};
 
 #[bitflags]
@@ -13,25 +16,27 @@ pub enum Color {
     White       = 1 << 4
 }
 
-#[derive(Eq, PartialEq, Clone)]
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct Mana {
     colors : BitFlags<Color>
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Pool {
     sequence: Vec<Mana>
 }
 
 pub const COLORLESS : Mana  = Mana { colors: BitFlags::EMPTY };
-pub const BLACK : Mana      = Mana { colors: make_bitflags!(Color::{ Black }) };
-pub const BLUE : Mana       = Mana { colors: make_bitflags!(Color::{ Blue }) };
-pub const GREEN : Mana      = Mana { colors: make_bitflags!(Color::{ Green }) };
-pub const RED : Mana        = Mana { colors: make_bitflags!(Color::{ Red }) };
-pub const WHITE : Mana      = Mana { colors: make_bitflags!(Color::{ White }) };
-pub const ALL : Mana        = Mana { colors: make_bitflags!(Color::{ Black | Blue | Green | Red | White }) };
+pub const BLACK : Mana      = Mana { colors: enumflags2::make_bitflags!(Color::{ Black }) };
+pub const BLUE : Mana       = Mana { colors: enumflags2::make_bitflags!(Color::{ Blue }) };
+pub const GREEN : Mana      = Mana { colors: enumflags2::make_bitflags!(Color::{ Green }) };
+pub const RED : Mana        = Mana { colors: enumflags2::make_bitflags!(Color::{ Red }) };
+pub const WHITE : Mana      = Mana { colors: enumflags2::make_bitflags!(Color::{ White }) };
 
-impl std::fmt::Debug for Mana {
+#[allow(dead_code)]
+pub const ALL : Mana        = Mana { colors: enumflags2::make_bitflags!(Color::{ Black | Blue | Green | Red | White }) };
+
+impl std::fmt::Display for Mana {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let mut colors = Vec::new();
         if self.colors.contains(Color::Black) {
@@ -74,7 +79,7 @@ impl std::fmt::Debug for Mana {
     }
 }
 
-impl std::fmt::Debug for Pool {
+impl std::fmt::Display for Pool {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if self.sequence.len() == 0 {
             return write!(f, "n/a");
@@ -84,21 +89,24 @@ impl std::fmt::Debug for Pool {
             write!(f, "{{{}}}", colorless_cost).expect("formatting failed");
         }
         for i in self.sequence.iter().filter(|&mana| !mana.is_colorless()) {
-            write!(f, "{:?}", i).expect("formatting failed!");
+            write!(f, "{}", i).expect("formatting failed!");
         }
         return Ok(());
     }
 }
 
 impl Mana {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         return COLORLESS.clone();
     }
 
+    #[allow(dead_code)]
     pub fn make_mono(a : Color) -> Self {
         return Mana { colors: BitFlags::empty() | a };
     }
 
+    #[allow(dead_code)]
     pub fn make_dual(a : Color, b : Color) -> Self {
         return Mana { colors: a | b };
     }
@@ -121,14 +129,17 @@ impl Mana {
         return self.colors.is_empty();
     }
 
+    #[cfg(test)]
     pub fn is_monocolor(&self) -> bool {
         return self.colors.exactly_one() != None;
     }
 
+    #[cfg(test)]
     pub fn can_pay_for(&self, other : &Mana) -> bool {
         return other.is_colorless() || self.colors.intersects(other.colors)
     }
 
+    #[cfg(test)]
     pub fn can_pay_for_exactly(&self, other : &Mana) -> bool {
         return self.colors == other.colors && (self.is_colorless() || self.is_monocolor());
     }
@@ -136,10 +147,12 @@ impl Mana {
 
 impl Pool {
 
+    #[allow(dead_code)]
     pub fn new() -> Self {
         return Self { sequence: Vec::new() };
     }
 
+    #[cfg(test)]
     pub fn converted_mana_cost(&self) -> u32 {
         return self.sequence.len() as u32;
     }
@@ -181,6 +194,7 @@ impl Pool {
         return Ok(mana_cost);
     }
 
+    #[cfg(test)]
     pub fn can_pay_for(&self, other : &Pool) -> bool {
         if other.converted_mana_cost() > self.converted_mana_cost() {
             return false;

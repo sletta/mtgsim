@@ -6,6 +6,7 @@ mod zone;
 
 use std::io::BufRead;
 use regex::Regex;
+use clap::Parser;
 
 #[derive(Debug)]
 struct DeckListEntry {
@@ -13,7 +14,7 @@ struct DeckListEntry {
     name : String,
 }
 
-fn read_deck_list(file_name : &str) -> Option<Vec<DeckListEntry>> {
+fn read_deck_list(file_name : &str) -> Result<Vec<DeckListEntry>, String> {
     let mut  deck_list : Vec<DeckListEntry> = Vec::new();
     let file = std::fs::File::open(file_name).unwrap();
     let lines = std::io::BufReader::new(file).lines();
@@ -30,59 +31,87 @@ fn read_deck_list(file_name : &str) -> Option<Vec<DeckListEntry>> {
             name: name.trim().to_lowercase()
         } );
     }
-    return Some(deck_list);
+    return Ok(deck_list);
+}
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Arguments {
+    #[arg(short, long)]
+    metadata : String,
+
+    #[arg(short, long)]
+    decklist : String,
+
+    #[arg(short, long)]
+    commander : String,
 }
 
 fn main() {
 
-    let args: Vec<String> = std::env::args().collect();
-    let mut deck_list_name : Option<String> = None;
-    let mut card_metadata_name : Option<String> = None;
+    let args = Arguments::parse();
 
-    let mut skip_next = false;
-    for i in 0..args.len() {
-        if skip_next {
-            skip_next = false;
-            continue;
-        }
-        let arg = &args[i];
-        if arg == "--deck-list" && i < args.len() - 1 {
-            deck_list_name = Some(args[i+1].clone());
-            skip_next = true;
-        } else if arg == "--card-metadata" && i < args.len() - 1 {
-            card_metadata_name = Some(args[i+1].clone());
-            skip_next = true;
-        }
-    }
-
-    if deck_list_name.is_none() {
-        println!("missing --deck-list [text-file] argument!");
-        return;
-    }
-
-    // if card_metadata_name.is_none() {
-    //     println("missing --card-metadata [json-file] argument!");
-    //     return;
-    // }
-
-    let deck_list = read_deck_list(&deck_list_name.unwrap()).unwrap();
+    let deck_list = read_deck_list(&args.decklist).unwrap();
 
     let mut db = carddb::DB::new();
+    db.load_metadata(&args.metadata);
 
-    db.load_metadata(&card_metadata_name.unwrap());
+    let bullshit = vec![1, 2, 3, 4, 5, 6, 8];
+    bullshit.iter().for_each(|n| println!("{}", n));
 
-    for entry in &deck_list {
-        db.load(&entry.name).expect("loading card failed!");
+    let mut found_commander = false;
+
+    deck_list.iter().for_each(|e| match db.load(&e.name) {
+        Some(card_data) => {
+            if card_data.name == args.commander {
+                assert_eq!(e.count, 1);
+                found_commander = true;
+            }
+        },
+        None => panic!("failed to load card: {}", e.name)
+    });
+
+    if !found_commander {
+        panic!("commander {} was not found in the decklist...", args.commander);
     }
 
     let mut game = game::Game::new();
-    for entry in &deck_list {
-        let card : &card::Card = &db.entries[&entry.name];
-        for _i in 0..entry.count {
-            game.library.add(card.clone());
+    deck_list.iter().for_each(|e| {
+        let card_data = &db.entries[&e.name];
+        let card = card::Card::new(&card_data);
+        if card_data.name == args.commander {
+            game.command.add(card);
+        } else {
+            for _ in 0..e.count {
+                game.library.add(card.clone())
+            }
         }
-    }
+    });
 
     game.setup();
+    game.dump();
+
+    // for (entry in )
+    // deck_list.iter().for_each(|e| println!("{:?}", e) );
+
+    // let deck_list = read_deck_list(&deck_list_name.unwrap()).unwrap();
+
+    // let mut db = carddb::DB::new();
+
+    // db.load_metadata(&card_metadata_name.unwrap());
+
+    // for entry in &deck_list {
+    //     db.load(&entry.name).expect("loading card failed!");
+    // }
+
+    // let mut game = game::Game::new();
+    // for entry in &deck_list {
+    //     let card : &card::Card = &db.entries[&entry.name];
+    //     for _i in 0..entry.count {
+    //         game.library.add(card.clone());
+    //     }
+    // }
+
+    // game.setup();
 
 }

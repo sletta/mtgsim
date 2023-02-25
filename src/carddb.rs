@@ -2,7 +2,7 @@ use crate::mana;
 use crate::card;
 
 pub struct DB {
-    pub entries : std::collections::HashMap<String, card::Card>,
+    pub entries : std::collections::HashMap<String, card::CardData>,
     metadata : std::collections::HashMap<String, json::JsonValue>
 }
 
@@ -29,7 +29,7 @@ fn parse_enters_tapped(name : &str, oracle_text : &str) -> bool {
     }
 }
 
-fn parse_card_metadata(card : &mut card::Card, object : &json::JsonValue) -> Result<(), String> {
+fn parse_card_metadata(card : &mut card::CardData, object : &json::JsonValue) -> Result<(), String> {
 
     fn parse_produces_tag(object : &json::JsonValue) -> Result<mana::Pool, String> {
         match object["produces"].as_str() {
@@ -53,24 +53,18 @@ fn parse_card_metadata(card : &mut card::Card, object : &json::JsonValue) -> Res
 
     match object["ramp"].as_str() {
         None => { }, // this is ok
-        Some("land-fetch") => {
+        Some("land-to-battlefield") => {
             match &object["land_type"] {
-                json::JsonValue::String(type_string) => card.ramp = Some(card::Ramp::LandFetch(vec![type_string.to_string()])),
+                json::JsonValue::String(type_string) => card.ramp = Some(card::Ramp::LandToBattlefield(vec![type_string.to_string()])),
                 json::JsonValue::Array(type_strings) => {
-                    let mut list : Vec<String> = Vec::new();
-                    for i in type_strings {
-                        list.push(i.to_string());
-                    }
-                    card.ramp = Some(card::Ramp::LandFetch(list))
+                    let list = type_strings.iter().map(|s| s.to_string()).collect();
+                    card.ramp = Some(card::Ramp::LandToBattlefield(list))
                 },
                 _ => return Err("missing 'land_type' when parsing 'land-fetch'".to_string())
             }
         },
         Some("mana-producer") => {
-            match parse_produces_tag(object) {
-                Ok(ramp) => card.ramp = Some(card::Ramp::ManaProducer(ramp)),
-                Err(failure) => return Err(failure)
-            }
+            card.ramp = Some(card::Ramp::ManaProducer(parse_produces_tag(object)?));
         }
         Some(_) => return Err("invalid ramp type".to_string())
     }
@@ -80,10 +74,10 @@ fn parse_card_metadata(card : &mut card::Card, object : &json::JsonValue) -> Res
         Some("mana-producer") => {
             card.land_mana = Some(parse_produces_tag(object)?);
         },
-        Some(_) => panic!("invalid 'land' type, {:?}", object)
+        Some(_) => return Err("invalid 'land' type".to_string())
     }
 
-    if (object.has_key("draw")) {
+    if object.has_key("draw") {
         let count = parse_count_tag(object)
             .unwrap_or_else(|e| panic!("'count' failed, error={:?}, name={:?}, json={:?}",
                                        e,
@@ -92,6 +86,10 @@ fn parse_card_metadata(card : &mut card::Card, object : &json::JsonValue) -> Res
         match object["draw"].as_str() {
             Some("one-shot") => card.draw = Some(card::Draw::OneShot(count)),
             Some("per-turn") => card.draw = Some(card::Draw::PerTurn(count)),
+            Some("activated") => {
+                let cost = mana::Pool::parse_cost(object["draw-cost"].as_str().unwrap())?;
+                card.draw = Some(card::Draw::Activated(count, cost));
+            }
             _ => return Err("invalid key for 'draw'".to_string())
         }
     }
@@ -108,10 +106,10 @@ impl DB {
         }
     }
 
-    pub fn load(&mut self, name : &str) -> Option<&card::Card> {
+    pub fn load(&mut self, name : &str) -> Option<&card::CardData> {
         println!("loading: {}", name);
         let file_name = name_to_file(name);
-        let mut contents : Option<String> = None;
+        let contents;
 
         if !std::path::Path::new(&file_name).exists() {
             let url = format!("https://api.scryfall.com/cards/named?exact=\"{}\"", name);
@@ -130,7 +128,7 @@ impl DB {
 
         let type_line = json_object["type_line"].to_string();
 
-        let mut entry = card::Card {
+        let mut entry = card::CardData {
             name: json_object["name"].to_string(),
             cmc: json_object["cmc"].as_f32().expect("cmc is not a number!") as i32,
             mana_cost: match mana::Pool::parse_cost(&json_object["mana_cost"].to_string()) {

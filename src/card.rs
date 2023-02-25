@@ -1,5 +1,5 @@
 use crate::mana;
-use enumflags2::{bitflags, make_bitflags, BitFlags};
+use enumflags2::{bitflags, BitFlags};
 
 #[bitflags]
 #[repr(u8)]
@@ -17,17 +17,18 @@ pub enum Types {
 #[derive(Debug, Clone)]
 pub enum Ramp {
     ManaProducer(mana::Pool),
-    LandFetch(Vec<String>)
+    LandToBattlefield(Vec<String>)
 }
 
 #[derive(Debug, Clone)]
 pub enum Draw {
     OneShot(Vec<i32>),
     PerTurn(Vec<i32>),
+    Activated(Vec<i32>, mana::Pool),
 }
 
-#[derive(Debug, Clone)]
-pub struct Card {
+#[derive(Debug)]
+pub struct CardData {
     pub name: String,
     pub cmc: i32,
     pub mana_cost: Option<mana::Pool>,
@@ -40,6 +41,12 @@ pub struct Card {
     pub ramp : Option<Ramp>,
     pub draw : Option<Draw>,
     pub land_mana : Option<mana::Pool>
+}
+
+#[derive(Debug, Clone)]
+pub struct Card<'a> {
+    pub data : &'a CardData,
+    pub tapped: bool
 }
 
 pub fn parse_types(types : &str) -> BitFlags<Types, u8> {
@@ -69,12 +76,30 @@ pub fn parse_types(types : &str) -> BitFlags<Types, u8> {
     return flags;
 }
 
-impl Card {
-    pub fn is_land(&self) -> bool {
-        return self.types.contains(Types::Land);
+impl CardData {
+}
+
+impl<'a> Card<'a> {
+    pub fn new(data : &'a CardData) -> Self {
+        return Card {
+            data: data,
+            tapped: false,
+        }
     }
 }
 
+impl<'a> std::fmt::Display for Card<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} - [{}]", self.data.name, self.data.types)?;
+        if self.tapped {
+            write!(f, " *TAPPED*")?;
+        }
+        if self.data.mana_cost.is_some() {
+            write!(f, " - {} ({})", self.data.mana_cost.as_ref().unwrap(), self.data.cmc)?;
+        }
+        return Ok(());
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -82,17 +107,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_card_parse_types() {
-        assert_eq!(parse_types("something land something"), make_bitflags!(Types::{ Land }));
-        assert_eq!(parse_types("something creature something"), make_bitflags!(Types::{ Creature }));
-        assert_eq!(parse_types("something artifact something"), make_bitflags!(Types::{ Artifact }));
-        assert_eq!(parse_types("something planeswalker something"), make_bitflags!(Types::{ Planeswalker }));
-        assert_eq!(parse_types("something enchantment something"), make_bitflags!(Types::{ Enchantment }));
-        assert_eq!(parse_types("something sorcery something"), make_bitflags!(Types::{ Sorcery }));
-        assert_eq!(parse_types("something instant something"), make_bitflags!(Types::{ Instant }));
-        assert_eq!(parse_types("land creature - angel"), make_bitflags!(Types::{ Land | Creature }));
-        assert_eq!(parse_types("legendary artifact - equipment"), make_bitflags!(Types::{ Artifact }));
-        assert_eq!(parse_types("something land something"), make_bitflags!(Types::{ Land }));
-        assert_eq!(parse_types("legendary enchantment creature"), make_bitflags!(Types::{ Creature | Enchantment }));
+    fn test_carddata_parse_types() {
+        assert_eq!(parse_types("something land something"), enumflags2::make_bitflags!(Types::{ Land }));
+        assert_eq!(parse_types("something creature something"), enumflags2::make_bitflags!(Types::{ Creature }));
+        assert_eq!(parse_types("something artifact something"), enumflags2::make_bitflags!(Types::{ Artifact }));
+        assert_eq!(parse_types("something planeswalker something"), enumflags2::make_bitflags!(Types::{ Planeswalker }));
+        assert_eq!(parse_types("something enchantment something"), enumflags2::make_bitflags!(Types::{ Enchantment }));
+        assert_eq!(parse_types("something sorcery something"), enumflags2::make_bitflags!(Types::{ Sorcery }));
+        assert_eq!(parse_types("something instant something"), enumflags2::make_bitflags!(Types::{ Instant }));
+        assert_eq!(parse_types("land creature - angel"), enumflags2::make_bitflags!(Types::{ Land | Creature }));
+        assert_eq!(parse_types("legendary artifact - equipment"), enumflags2::make_bitflags!(Types::{ Artifact }));
+        assert_eq!(parse_types("something land something"), enumflags2::make_bitflags!(Types::{ Land }));
+        assert_eq!(parse_types("legendary enchantment creature"), enumflags2::make_bitflags!(Types::{ Creature | Enchantment }));
     }
 }
