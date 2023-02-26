@@ -44,8 +44,9 @@ pub struct CardData {
 }
 
 #[derive(Debug, Clone)]
-pub struct Card<'a> {
-    pub data : &'a CardData,
+pub struct Card<'db> {
+    pub id : u32,
+    pub data : &'db CardData,
     pub tapped: bool
 }
 
@@ -79,18 +80,24 @@ pub fn parse_types(types : &str) -> BitFlags<Types, u8> {
 impl CardData {
 }
 
-impl<'a> Card<'a> {
-    pub fn new(data : &'a CardData) -> Self {
-        return Card {
+impl<'db> Card<'db> {
+    pub fn new(data : &'db CardData) -> Self {
+        let card = Card {
+            id: 0,
             data: data,
             tapped: false,
-        }
+        };
+        return card;
+    }
+
+    pub fn is_type(&self, t : Types) -> bool {
+        return self.data.types.contains(t);
     }
 }
 
-impl<'a> std::fmt::Display for Card<'a> {
+impl<'db> std::fmt::Display for Card<'db> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} - [{}]", self.data.name, self.data.types)?;
+        write!(f, "{} - [{}] #{}", self.data.name, self.data.types, self.id)?;
         if self.tapped {
             write!(f, " *TAPPED*")?;
         }

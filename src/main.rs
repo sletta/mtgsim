@@ -76,10 +76,12 @@ fn main() {
     }
 
     let mut game = game::Game::new();
+
     deck_list.iter().for_each(|e| {
         let card_data = &db.entries[&e.name];
         let card = card::Card::new(&card_data);
         if card_data.name == args.commander {
+            assert_eq!(e.count, 1);
             game.command.add(card);
         } else {
             for _ in 0..e.count {
@@ -88,8 +90,15 @@ fn main() {
         }
     });
 
-    game.setup();
-    game.dump();
+    // game.setup();
+
+    let settings = game::Settings {
+        turn_count: 10,
+        draw_card_on_turn_one: true
+    };
+    game.play(&settings);
+
+    // game.dump();
 
     // for (entry in )
     // deck_list.iter().for_each(|e| println!("{:?}", e) );

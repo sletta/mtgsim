@@ -112,6 +112,7 @@ impl DB {
         let contents;
 
         if !std::path::Path::new(&file_name).exists() {
+            println!(" -> downloading...");
             let url = format!("https://api.scryfall.com/cards/named?exact=\"{}\"", name);
             let response = reqwest::blocking::get(&url).unwrap_or_else(|e| panic!("download failed: url={:?}, error={:?}", url, e));
             let text = response.text().unwrap();

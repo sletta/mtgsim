@@ -134,7 +134,6 @@ impl Mana {
         return self.colors.exactly_one() != None;
     }
 
-    #[cfg(test)]
     pub fn can_pay_for(&self, other : &Mana) -> bool {
         return other.is_colorless() || self.colors.intersects(other.colors)
     }
@@ -142,6 +141,14 @@ impl Mana {
     #[cfg(test)]
     pub fn can_pay_for_exactly(&self, other : &Mana) -> bool {
         return self.colors == other.colors && (self.is_colorless() || self.is_monocolor());
+    }
+
+    pub fn unite(&mut self, other : &Mana) {
+        self.colors |= other.colors;
+    }
+
+    pub fn subtract(&mut self, other : &Mana) {
+        self.colors.remove(other.colors);
     }
 }
 
