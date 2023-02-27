@@ -59,14 +59,14 @@ impl<'db> Game<'db> {
 
     pub fn gather_mana_pool(&self) -> mana::Pool {
         let mut pool = mana::Pool::new();
-        self.battlefield.cards.iter().for_each(|c| {
+        for c in self.battlefield.cards.iter() {
             if !c.tapped {
                 match &c.data.on_tap {
                     Effect::ProduceMana(colors) => pool.add(colors),
                     _ => ()
                 }
             }
-        });
+        }
         return pool;
     }
 
