@@ -23,7 +23,7 @@ pub struct Mana {
 
 #[derive(Clone, Debug)]
 pub struct Pool {
-    sequence: Vec<Mana>
+    pub sequence: Vec<Mana>
 }
 
 pub const COLORLESS : Mana  = Mana { colors: BitFlags::EMPTY };
@@ -162,6 +162,14 @@ impl Pool {
     #[cfg(test)]
     pub fn converted_mana_cost(&self) -> u32 {
         return self.sequence.len() as u32;
+    }
+
+    pub fn add(&mut self, other : &Pool) {
+        other.sequence.iter().for_each(|color| self.sequence.push((*color).clone()));
+    }
+
+    pub fn count(&self, color : &Mana) -> u32 {
+        return self.sequence.iter().filter(|m| m.colors == color.colors).count() as u32;
     }
 
     pub fn parse_cost(cost : &str) -> Result<Self, String> {

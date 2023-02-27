@@ -1,5 +1,5 @@
 use crate::zone::Zone;
-use crate::card::{Card, Types};
+use crate::card::{Card, CardData, Effect, Types};
 use crate::mana;
 use rand::distributions::{Distribution, Uniform};
 
@@ -21,7 +21,8 @@ struct Turn<'db, 'game> {
     game: &'game mut Game<'db>,
     turn_number: u32,
     lands_played : u32,
-    land_limit: u32
+    land_limit: u32,
+    mana_pool : Option<mana::Pool>,
 }
 
 impl<'db> Game<'db> {
@@ -56,6 +57,19 @@ impl<'db> Game<'db> {
         self.battlefield.add(card);
     }
 
+    pub fn gather_mana_pool(&self) -> mana::Pool {
+        let mut pool = mana::Pool::new();
+        self.battlefield.cards.iter().for_each(|c| {
+            if !c.tapped {
+                match &c.data.on_tap {
+                    Effect::ProduceMana(colors) => pool.add(colors),
+                    _ => ()
+                }
+            }
+        });
+        return pool;
+    }
+
     pub fn play(&mut self, settings: &Settings) {
 
         assert!(self.library.size() > 0);
@@ -63,7 +77,7 @@ impl<'db> Game<'db> {
         assert_eq!(self.battlefield.size(), 0);
         assert_eq!(self.graveyard.size(), 0);
 
-        let mut id = self.command.assign_ids(1);
+        let id = self.command.assign_ids(1);
         self.library.assign_ids(id);
 
         self.library.shuffle();
@@ -84,6 +98,7 @@ impl<'db, 'game> Turn<'db, 'game> {
             turn_number: turn,
             lands_played: 0,
             land_limit: 1,
+            mana_pool: None,
         }
     }
 
@@ -93,10 +108,14 @@ impl<'db, 'game> Turn<'db, 'game> {
         // untap all
         self.game.battlefield.untap_all();
 
+        // gather mana
+       self.mana_pool = Some(self.game.gather_mana_pool());
+
         // draw card for turn..
         if self.turn_number > 1 || settings.draw_card_on_turn_one {
             self.game.draw_cards(1);
         }
+
 
         while self.try_to_play_land() {
             continue;
@@ -117,6 +136,8 @@ impl<'db, 'game> Turn<'db, 'game> {
         if lands_in_hand.len() == 0 {
             return false;
         }
+
+
 
         let colors_in_play = self.game.battlefield.find_produced_colors();
         let mut colors_in_hand = self.game.hand.find_produced_colors();
@@ -149,19 +170,30 @@ impl<'db, 'game> Turn<'db, 'game> {
 
         return false;
     }
+}
 
-    // pub fn try_to_play_land(&mut self, game: &'a mut Game<'a>) -> bool {
-    //     // let lands : Vec<Card> = self.game.hand.cards.iter().filter_map(|c| match c.is_land() {
-    //     //     true => Some(c),
-    //     //     false => None
-    //     // }).collect();
+#[cfg(test)]
+mod tests {
 
-    //     // println!(" -- found lands to play: {:?}". lands);
+    use super::*;
 
-    //     // if lands.is_empty() {
-    //         return false;
-    //     // }
-    //     // return true;
-    // }
+    #[test]
+    fn test_game_gather_mana_pool() {
+        let sol_ring_data = CardData::make_sol_ring_data();
+        let swamp_data = CardData::make_swamp_data();
+        let command_tower_data = CardData::make_command_tower_data();
+        let commanders_sphere_data = CardData::make_commanders_sphere_data();
 
+        let mut game : Game = Game::new();
+        game.battlefield.add(Card::new_with_id(1, &command_tower_data));
+        game.battlefield.add(Card::new_with_id(2, &sol_ring_data));
+        game.battlefield.add(Card::new_with_id(3, &swamp_data));
+        game.battlefield.add(Card::new_with_id(4, &commanders_sphere_data));
+
+        let pool = game.gather_mana_pool();
+
+        assert_eq!(pool.count(&mana::COLORLESS), 2);
+        assert_eq!(pool.count(&mana::ALL), 2);
+        assert_eq!(pool.count(&mana::BLACK), 1);
+    }
 }

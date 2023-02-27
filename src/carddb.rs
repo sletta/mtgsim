@@ -31,68 +31,68 @@ fn parse_enters_tapped(name : &str, oracle_text : &str) -> bool {
 
 fn parse_card_metadata(card : &mut card::CardData, object : &json::JsonValue) -> Result<(), String> {
 
-    fn parse_produces_tag(object : &json::JsonValue) -> Result<mana::Pool, String> {
-        match object["produces"].as_str() {
-            None => return Err("missing 'produces' property".to_string()),
-            Some(mana_string) => {
-                return mana::Pool::parse_cost(mana_string);
-            }
-        }
-    }
+    // fn parse_produces_tag(object : &json::JsonValue) -> Result<mana::Pool, String> {
+    //     match object["produces"].as_str() {
+    //         None => return Err("missing 'produces' property".to_string()),
+    //         Some(mana_string) => {
+    //             return mana::Pool::parse_cost(mana_string);
+    //         }
+    //     }
+    // }
 
-    fn parse_count_tag(object : &json::JsonValue) -> Result<Vec<i32>, String> {
-        match &object["count"] {
-            json::JsonValue::Number(value) => {
-                println!("that stupid value is: {:?}", value);
-                return Err("god damnit...".to_string());
-            },
-            json::JsonValue::Array(array) => return Ok(array.iter().map(|j| j.as_i32().unwrap()).collect()),
-            _ => return Err("invald 'count' tag".to_string())
-        }
-    }
+    // fn parse_count_tag(object : &json::JsonValue) -> Result<Vec<i32>, String> {
+    //     match &object["count"] {
+    //         json::JsonValue::Number(value) => {
+    //             println!("that stupid value is: {:?}", value);
+    //             return Err("god damnit...".to_string());
+    //         },
+    //         json::JsonValue::Array(array) => return Ok(array.iter().map(|j| j.as_i32().unwrap()).collect()),
+    //         _ => return Err("invald 'count' tag".to_string())
+    //     }
+    // }
 
-    match object["ramp"].as_str() {
-        None => { }, // this is ok
-        Some("land-to-battlefield") => {
-            match &object["land_type"] {
-                json::JsonValue::String(type_string) => card.ramp = Some(card::Ramp::LandToBattlefield(vec![type_string.to_string()])),
-                json::JsonValue::Array(type_strings) => {
-                    let list = type_strings.iter().map(|s| s.to_string()).collect();
-                    card.ramp = Some(card::Ramp::LandToBattlefield(list))
-                },
-                _ => return Err("missing 'land_type' when parsing 'land-fetch'".to_string())
-            }
-        },
-        Some("mana-producer") => {
-            card.ramp = Some(card::Ramp::ManaProducer(parse_produces_tag(object)?));
-        }
-        Some(_) => return Err("invalid ramp type".to_string())
-    }
+    // match object["ramp"].as_str() {
+    //     None => { }, // this is ok
+    //     Some("land-to-battlefield") => {
+    //         match &object["land_type"] {
+    //             json::JsonValue::String(type_string) => card.ramp = Some(card::Ramp::LandToBattlefield(vec![type_string.to_string()])),
+    //             json::JsonValue::Array(type_strings) => {
+    //                 let list = type_strings.iter().map(|s| s.to_string()).collect();
+    //                 card.ramp = Some(card::Ramp::LandToBattlefield(list))
+    //             },
+    //             _ => return Err("missing 'land_type' when parsing 'land-fetch'".to_string())
+    //         }
+    //     },
+    //     Some("mana-producer") => {
+    //         card.ramp = Some(card::Ramp::ManaProducer(parse_produces_tag(object)?));
+    //     }
+    //     Some(_) => return Err("invalid ramp type".to_string())
+    // }
 
-    match object["land"].as_str() {
-        None => { }, // this is ok..
-        Some("mana-producer") => {
-            card.land_mana = Some(parse_produces_tag(object)?);
-        },
-        Some(_) => return Err("invalid 'land' type".to_string())
-    }
+    // match object["land"].as_str() {
+    //     None => { }, // this is ok..
+    //     Some("mana-producer") => {
+    //         card.land_mana = Some(parse_produces_tag(object)?);
+    //     },
+    //     Some(_) => return Err("invalid 'land' type".to_string())
+    // }
 
-    if object.has_key("draw") {
-        let count = parse_count_tag(object)
-            .unwrap_or_else(|e| panic!("'count' failed, error={:?}, name={:?}, json={:?}",
-                                       e,
-                                       card.name,
-                                       object));
-        match object["draw"].as_str() {
-            Some("one-shot") => card.draw = Some(card::Draw::OneShot(count)),
-            Some("per-turn") => card.draw = Some(card::Draw::PerTurn(count)),
-            Some("activated") => {
-                let cost = mana::Pool::parse_cost(object["draw-cost"].as_str().unwrap())?;
-                card.draw = Some(card::Draw::Activated(count, cost));
-            }
-            _ => return Err("invalid key for 'draw'".to_string())
-        }
-    }
+    // if object.has_key("draw") {
+    //     let count = parse_count_tag(object)
+    //         .unwrap_or_else(|e| panic!("'count' failed, error={:?}, name={:?}, json={:?}",
+    //                                    e,
+    //                                    card.name,
+    //                                    object));
+    //     match object["draw"].as_str() {
+    //         Some("one-shot") => card.draw = Some(card::Draw::OneShot(count)),
+    //         Some("per-turn") => card.draw = Some(card::Draw::PerTurn(count)),
+    //         Some("activated") => {
+    //             let cost = mana::Pool::parse_cost(object["draw-cost"].as_str().unwrap())?;
+    //             card.draw = Some(card::Draw::Activated(count, cost));
+    //         }
+    //         _ => return Err("invalid key for 'draw'".to_string())
+    //     }
+    // }
 
     return Ok(());
 }
@@ -140,9 +140,11 @@ impl DB {
             types: card::parse_types(&type_line),
             produced_mana: parse_produced_mana(&json_object["produced_mana"]),
             enters_tapped: parse_enters_tapped(&name, &json_object["oracle_text"].to_string()),
-            ramp: None,
-            draw: None,
-            land_mana: None
+            on_tap: card::Effect::None,
+            on_sac: card::Effect::None,
+            on_play: card::Effect::None,
+            on_upkeep: card::Effect::None,
+            on_activate: card::Effect::None,
         };
 
         match self.metadata.get(name) {

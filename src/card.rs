@@ -15,16 +15,72 @@ pub enum Types {
 }
 
 #[derive(Debug, Clone)]
-pub enum Ramp {
-    ManaProducer(mana::Pool),
-    LandToBattlefield(Vec<String>)
+// pub enum TapEffect {
+//     None,
+//     ProduceMana(mana::Pool), // Lands, Mana Rocks and Mana Dorks
+// }
+
+/*
+
+{
+    "name": "Commander's Sphere",
+    "tap": {
+        "effect": "produce-mana",
+        "produced": "{B/G/R/U/W}"
+    },
+    "sacrifice:" {
+        "effect": "draw",
+        "count": 1
+    }
+},
+
+{
+    "name": "Evolving Wilds",
+    "sacrifice": {
+        "effect": "land-to-battelfield",
+        "types": "basic land"
+    }
 }
 
-#[derive(Debug, Clone)]
-pub enum Draw {
-    OneShot(Vec<i32>),
-    PerTurn(Vec<i32>),
-    Activated(Vec<i32>, mana::Pool),
+{
+    "name": "Cultivate",
+    "play": [
+        {
+            "effect": "land-to-hand",
+            "types": "basic land"
+        }, {
+            "effect": "land-to-battlefield",
+            "types": "basic land"
+        } ]
+},
+
+{
+    "name": "Elemental Bond",
+    "upkeep": {
+        "effect": "draw",
+        "count": [0, 0, 1, 1, 1, 1, 2, 2, 3, 4]
+    }
+}
+
+{
+    "name": "War Room",
+    "activate": {
+        "effect": "draw",
+        "cost": "{C}{C}{C}",
+        "count:": 1
+    }
+}
+
+
+ */
+
+pub enum Effect {
+    None,
+    ProduceMana(mana::Pool), // like 'Dark Ritual'
+    LandToHand(Vec<String>), // like 'Borderland Ranger'
+    LandToBattlefield(Vec<String>), // 'Rampant Growth' or 'Cultivate'
+    Draw(Vec<u32>),                 // like 'Harmonize' or 'Read the Bones'
+    Multiple(Vec<Effect>),
 }
 
 #[derive(Debug)]
@@ -38,9 +94,11 @@ pub struct CardData {
     pub produced_mana: Option<mana::Mana>,
     pub enters_tapped : bool,
 
-    pub ramp : Option<Ramp>,
-    pub draw : Option<Draw>,
-    pub land_mana : Option<mana::Pool>
+    pub on_tap : Effect,
+    pub on_play : Effect,
+    pub on_activate : Effect,
+    pub on_sac : Effect,
+    pub on_upkeep : Effect,
 }
 
 #[derive(Debug, Clone)]
@@ -77,9 +135,6 @@ pub fn parse_types(types : &str) -> BitFlags<Types, u8> {
     return flags;
 }
 
-impl CardData {
-}
-
 impl<'db> Card<'db> {
     pub fn new(data : &'db CardData) -> Self {
         let card = Card {
@@ -87,6 +142,12 @@ impl<'db> Card<'db> {
             data: data,
             tapped: false,
         };
+        return card;
+    }
+
+    pub fn new_with_id(the_id : u32, data : &'db CardData) -> Self {
+        let mut card = Card::new(data);
+        card.id = the_id;
         return card;
     }
 
@@ -107,6 +168,99 @@ impl<'db> std::fmt::Display for Card<'db> {
         return Ok(());
     }
 }
+
+impl CardData {
+    #[cfg(test)]
+    pub fn make_sol_ring_data() -> CardData {
+        return CardData {
+            name: "Sol Ring".to_string(),
+            cmc: 1,
+            mana_cost: Some(mana::Pool { sequence: vec![mana::COLORLESS] }),
+            type_string: "Artifact".to_string(),
+            types: enumflags2::make_bitflags!(Types::{Artifact}),
+            produced_mana: Some(mana::COLORLESS),
+            enters_tapped: false,
+            on_tap: Effect::ProduceMana(mana::Pool { sequence: vec![mana::COLORLESS, mana::COLORLESS] }),
+            on_play: Effect::None,
+            on_activate: Effect::None,
+            on_sac: Effect::None,
+            on_upkeep: Effect::None,
+        };
+    }
+
+    #[cfg(test)]
+    pub fn make_commanders_sphere_data() -> CardData {
+        return CardData {
+            name: "Commander's Sphere".to_string(),
+            cmc: 1,
+            mana_cost: Some(mana::Pool { sequence: vec![mana::COLORLESS, mana::COLORLESS, mana::COLORLESS] }),
+            type_string: "Artifact".to_string(),
+            types: enumflags2::make_bitflags!(Types::{Artifact}),
+            produced_mana: Some(mana::ALL),
+            enters_tapped: false,
+            on_tap: Effect::ProduceMana(mana::Pool { sequence: vec![mana::ALL] }),
+            on_play: Effect::None,
+            on_activate: Effect::None,
+            on_sac: Effect::Draw(vec![1]),
+            on_upkeep: Effect::None,
+        };
+    }
+
+    #[cfg(test)]
+    pub fn make_plains_data() -> CardData {
+        return CardData {
+            name: "Plains".to_string(),
+            cmc: 0,
+            mana_cost: None,
+            type_string: "Basic Land".to_string(),
+            types: enumflags2::make_bitflags!(Types::{Land}),
+            produced_mana: Some(mana::WHITE),
+            enters_tapped: false,
+            on_tap: Effect::ProduceMana(mana::Pool { sequence: vec![mana::WHITE] }),
+            on_play: Effect::None,
+            on_activate: Effect::None,
+            on_sac: Effect::None,
+            on_upkeep: Effect::None,
+        };
+    }
+
+    #[cfg(test)]
+    pub fn make_swamp_data() -> CardData {
+        return CardData {
+            name: "Swamp".to_string(),
+            cmc: 0,
+            mana_cost: None,
+            type_string: "Basic Land".to_string(),
+            types: enumflags2::make_bitflags!(Types::{Land}),
+            produced_mana: Some(mana::BLACK),
+            enters_tapped: false,
+            on_tap: Effect::ProduceMana(mana::Pool { sequence: vec![mana::BLACK] }),
+            on_play: Effect::None,
+            on_activate: Effect::None,
+            on_sac: Effect::None,
+            on_upkeep: Effect::None,
+        };
+    }
+
+    #[cfg(test)]
+    pub fn make_command_tower_data() -> CardData {
+        return CardData {
+            name: "Command Tower".to_string(),
+            cmc: 0,
+            mana_cost: None,
+            type_string: "Land".to_string(),
+            types: enumflags2::make_bitflags!(Types::{Land}),
+            produced_mana: Some(mana::ALL),
+            enters_tapped: false,
+            on_tap: Effect::ProduceMana(mana::Pool { sequence: vec![mana::ALL] }),
+            on_play: Effect::None,
+            on_activate: Effect::None,
+            on_sac: Effect::None,
+            on_upkeep: Effect::None,
+        };
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
