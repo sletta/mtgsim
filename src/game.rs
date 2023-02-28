@@ -1,6 +1,6 @@
-use crate::zone::Zone;
-use crate::card::{Card, CardData, Effect, Types};
-use crate::mana;
+use crate::zone::*;
+use crate::card::*;
+use crate::mana::*;
 use rand::distributions::{Distribution, Uniform};
 
 #[derive(Clone)]
@@ -22,7 +22,7 @@ struct Turn<'db, 'game> {
     turn_number: u32,
     lands_played : u32,
     land_limit: u32,
-    mana_pool : Option<mana::Pool>,
+    mana_pool : Option<Pool>,
 }
 
 impl<'db> Game<'db> {
@@ -57,14 +57,26 @@ impl<'db> Game<'db> {
         self.battlefield.add(card);
     }
 
-    pub fn gather_mana_pool(&self) -> mana::Pool {
-        let mut pool = mana::Pool::new();
+    pub fn gather_mana_pool(&self) -> Pool {
+        let mut pool = Pool::new();
         for c in self.battlefield.cards.iter() {
-            if !c.tapped {
-                match &c.data.on_tap {
-                    Effect::ProduceMana(colors) => pool.add(colors),
-                    _ => ()
-                }
+            match &c.data.abilities {
+                Some(abilities) => {
+                    for ability in abilities.iter() {
+                        match &ability.effect {
+                            Effect::ProduceMana(pool_in_effect) => {
+                                match &ability.cost {
+                                    Tap => if !c.tapped {
+                                        pool.add(&pool_in_effect)
+                                    },
+                                    _ => ()
+                                }
+                            }
+                            _ => ()
+                        }
+                    }
+                },
+                None => ()
             }
         }
         return pool;
@@ -134,10 +146,20 @@ impl<'db, 'game> Turn<'db, 'game> {
 
         let lands_in_hand = self.game.hand.query(Types::Land);
         if lands_in_hand.len() == 0 {
+            // try to draw lands?
             return false;
         }
 
+        let mut pips_in_hand = self.game.hand.count_pips_in_mana_costs();
+        pips_in_hand.normalize();
 
+        let mut pips_in_mana_pool = PipCounts::new();
+        pips_in_mana_pool.count_in_pool(self.mana_pool.as_ref().unwrap());
+        // pips_in_mana_pool.normalize();
+
+        println!(" -> pips in hand: {:?}", pips_in_hand);
+        println!(" -> pips_in_mana_pool: {:?}", pips_in_mana_pool);
+        println!(" -> pools: {:?}", self.mana_pool);
 
         let colors_in_play = self.game.battlefield.find_produced_colors();
         let mut colors_in_hand = self.game.hand.find_produced_colors();
@@ -146,7 +168,7 @@ impl<'db, 'game> Turn<'db, 'game> {
         colors_in_hand.subtract(&colors_in_play);
 
         let mut id : Option<u32> = None;
-        if colors_in_hand != mana::COLORLESS {
+        if colors_in_hand != COLORLESS {
             println!(" -> colors {} is not in play, try to play that...", colors_in_hand);
             for i in lands_in_hand.iter() {
                 match &i.data.produced_mana {
@@ -192,8 +214,8 @@ mod tests {
 
         let pool = game.gather_mana_pool();
 
-        assert_eq!(pool.count(&mana::COLORLESS), 2);
-        assert_eq!(pool.count(&mana::ALL), 2);
-        assert_eq!(pool.count(&mana::BLACK), 1);
+        assert_eq!(pool.count(&COLORLESS), 2);
+        assert_eq!(pool.count(&ALL), 2);
+        assert_eq!(pool.count(&BLACK), 1);
     }
 }

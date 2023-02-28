@@ -140,11 +140,7 @@ impl DB {
             types: card::parse_types(&type_line),
             produced_mana: parse_produced_mana(&json_object["produced_mana"]),
             enters_tapped: parse_enters_tapped(&name, &json_object["oracle_text"].to_string()),
-            on_tap: card::Effect::None,
-            on_sac: card::Effect::None,
-            on_play: card::Effect::None,
-            on_upkeep: card::Effect::None,
-            on_activate: card::Effect::None,
+            abilities: None
         };
 
         match self.metadata.get(name) {

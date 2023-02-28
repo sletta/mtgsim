@@ -1,4 +1,4 @@
-use crate::mana;
+use crate::mana::*;
 use enumflags2::{bitflags, BitFlags};
 
 #[bitflags]
@@ -14,91 +14,111 @@ pub enum Types {
     Instant = 0x40,
 }
 
-#[derive(Debug, Clone)]
-// pub enum TapEffect {
-//     None,
-//     ProduceMana(mana::Pool), // Lands, Mana Rocks and Mana Dorks
-// }
-
 /*
 
 {
     "name": "Commander's Sphere",
-    "tap": {
-        "effect": "produce-mana",
-        "produced": "{B/G/R/U/W}"
-    },
-    "sacrifice:" {
-        "effect": "draw",
-        "count": 1
-    }
+    "abilities": [
+        {
+            "when": "activated",
+            "effect": { "type": "mana", "produces": "{B/G/R/W/U}" },
+            "cost": "tap"
+        }, {
+            "when": "activated",
+            "effect": { "type": "draw", "count": "1" },
+            "cost": "sacrifice",
+        }
+    ]
 },
 
 {
     "name": "Evolving Wilds",
-    "sacrifice": {
-        "effect": "land-to-battelfield",
-        "types": "basic land"
-    }
+    "when": "activated",
+    "cost": "tap",
+    "effect": { "type": "fetch-land", "to-battlefield": "basic land" }
 }
 
 {
+    "name": "Farseek",
+    "when": "cast",
+    "effect": { "type": "fetch-land", "to-battlefield": "mountain/island/plains/swamp" }
+},
+
+{
     "name": "Cultivate",
-    "play": [
-        {
-            "effect": "land-to-hand",
-            "types": "basic land"
-        }, {
-            "effect": "land-to-battlefield",
-            "types": "basic land"
-        } ]
+    "when": "cast",
+    "effect": { "type": "fetch-land", "to-battlefield": "basic land", "to-hand": "basic land" }
 },
 
 {
     "name": "Elemental Bond",
-    "upkeep": {
-        "effect": "draw",
-        "count": [0, 0, 1, 1, 1, 1, 2, 2, 3, 4]
-    }
+    "when": "upkeep"
+    "effect": { "type": "draw", "count": [0, 0, 1, 1, 1, 1, 2, 2, 3, 4] },
 }
 
 {
     "name": "War Room",
-    "activate": {
-        "effect": "draw",
-        "cost": "{C}{C}{C}",
-        "count:": 1
+    "abilitiies": [
+        {
+            "when": "activated",
+            "effect": { "type": "mana", "produces": "{C}" },
+            "cost": "tap"
+        }, {
+            "when": "activated",
+            "effect": { "type": "draw", "count": "1" },
+            "cost": { "type": "tap-and-mana", "mana": {C}{C}{C}" },
+            "availability": 0.5
+        }
+        ]
     }
 }
-
-
  */
 
+#[derive(Debug)]
 pub enum Effect {
     None,
-    ProduceMana(mana::Pool), // like 'Dark Ritual'
-    LandToHand(Vec<String>), // like 'Borderland Ranger'
-    LandToBattlefield(Vec<String>), // 'Rampant Growth' or 'Cultivate'
+    ProduceMana(Pool), // like 'Dark Ritual'
+    FetchLand { to_hand : Vec<String>, to_battlefield: Vec<String> }, // like 'Cultivate'
     Draw(Vec<u32>),                 // like 'Harmonize' or 'Read the Bones'
-    Multiple(Vec<Effect>),
+}
+
+#[derive(Debug)]
+pub enum Trigger {
+    Cast,
+    Activated,
+    Upkeep
+}
+
+#[derive(Debug)]
+pub enum Cost {
+    None,
+    Tap,
+    Mana(Pool),
+    Sacrifice,
+    TapAndMana(Pool),
+    TapSacrificeMana(Pool)
+}
+
+#[derive(Debug)]
+pub struct Ability {
+    pub trigger: Trigger,
+    pub cost : Cost,
+    pub effect : Effect,
+    pub availability : f32,
 }
 
 #[derive(Debug)]
 pub struct CardData {
     pub name: String,
     pub cmc: i32,
-    pub mana_cost: Option<mana::Pool>,
+    pub mana_cost: Option<Pool>,
     pub type_string: String,
     pub types: BitFlags<Types>,
 
-    pub produced_mana: Option<mana::Mana>,
+    pub produced_mana: Option<Mana>,
     pub enters_tapped : bool,
 
-    pub on_tap : Effect,
-    pub on_play : Effect,
-    pub on_activate : Effect,
-    pub on_sac : Effect,
-    pub on_upkeep : Effect,
+    pub abilities : Option<Vec<Ability>>,
 }
 
 #[derive(Debug, Clone)]
@@ -145,6 +165,7 @@ impl<'db> Card<'db> {
         return card;
     }
 
+    #[cfg(test)]
     pub fn new_with_id(the_id : u32, data : &'db CardData) -> Self {
         let mut card = Card::new(data);
         card.id = the_id;
@@ -175,16 +196,17 @@ impl CardData {
         return CardData {
             name: "Sol Ring".to_string(),
             cmc: 1,
-            mana_cost: Some(mana::Pool { sequence: vec![mana::COLORLESS] }),
+            mana_cost: Some(Pool { sequence: vec![COLORLESS] }),
             type_string: "Artifact".to_string(),
             types: enumflags2::make_bitflags!(Types::{Artifact}),
-            produced_mana: Some(mana::COLORLESS),
+            produced_mana: Some(COLORLESS),
             enters_tapped: false,
-            on_tap: Effect::ProduceMana(mana::Pool { sequence: vec![mana::COLORLESS, mana::COLORLESS] }),
-            on_play: Effect::None,
-            on_activate: Effect::None,
-            on_sac: Effect::None,
-            on_upkeep: Effect::None,
+            abilities: Some(vec![ Ability {
+                trigger: Trigger::Activated,
+                cost: Cost::Tap,
+                effect: Effect::ProduceMana(make_pool![COLORLESS, COLORLESS]),
+                availability: 1.0
+            }])
         };
     }
 
@@ -193,16 +215,17 @@ impl CardData {
         return CardData {
             name: "Commander's Sphere".to_string(),
             cmc: 1,
-            mana_cost: Some(mana::Pool { sequence: vec![mana::COLORLESS, mana::COLORLESS, mana::COLORLESS] }),
+            mana_cost: Some(Pool { sequence: vec![COLORLESS, COLORLESS, COLORLESS] }),
             type_string: "Artifact".to_string(),
             types: enumflags2::make_bitflags!(Types::{Artifact}),
-            produced_mana: Some(mana::ALL),
+            produced_mana: Some(ALL),
             enters_tapped: false,
-            on_tap: Effect::ProduceMana(mana::Pool { sequence: vec![mana::ALL] }),
-            on_play: Effect::None,
-            on_activate: Effect::None,
-            on_sac: Effect::Draw(vec![1]),
-            on_upkeep: Effect::None,
+            abilities: Some(vec! [ Ability {
+                trigger: Trigger::Activated,
+                cost: Cost::Tap,
+                effect: Effect::ProduceMana(make_pool![ALL]),
+                availability: 1.0
+            }])
         };
     }
 
@@ -214,13 +237,14 @@ impl CardData {
             mana_cost: None,
             type_string: "Basic Land".to_string(),
             types: enumflags2::make_bitflags!(Types::{Land}),
-            produced_mana: Some(mana::WHITE),
+            produced_mana: Some(WHITE),
             enters_tapped: false,
-            on_tap: Effect::ProduceMana(mana::Pool { sequence: vec![mana::WHITE] }),
-            on_play: Effect::None,
-            on_activate: Effect::None,
-            on_sac: Effect::None,
-            on_upkeep: Effect::None,
+            abilities: Some(vec! [ Ability {
+                trigger: Trigger::Activated,
+                cost: Cost::Tap,
+                effect: Effect::ProduceMana(make_pool![WHITE]),
+                availability: 1.0
+            }])
         };
     }
 
@@ -232,13 +256,14 @@ impl CardData {
             mana_cost: None,
             type_string: "Basic Land".to_string(),
             types: enumflags2::make_bitflags!(Types::{Land}),
-            produced_mana: Some(mana::BLACK),
+            produced_mana: Some(BLACK),
             enters_tapped: false,
-            on_tap: Effect::ProduceMana(mana::Pool { sequence: vec![mana::BLACK] }),
-            on_play: Effect::None,
-            on_activate: Effect::None,
-            on_sac: Effect::None,
-            on_upkeep: Effect::None,
+            abilities: Some(vec! [ Ability {
+                trigger: Trigger::Activated,
+                cost: Cost::Tap,
+                effect: Effect::ProduceMana(make_pool![BLACK]),
+                availability: 1.0
+            }])
         };
     }
 
@@ -250,17 +275,17 @@ impl CardData {
             mana_cost: None,
             type_string: "Land".to_string(),
             types: enumflags2::make_bitflags!(Types::{Land}),
-            produced_mana: Some(mana::ALL),
+            produced_mana: Some(ALL),
             enters_tapped: false,
-            on_tap: Effect::ProduceMana(mana::Pool { sequence: vec![mana::ALL] }),
-            on_play: Effect::None,
-            on_activate: Effect::None,
-            on_sac: Effect::None,
-            on_upkeep: Effect::None,
+            abilities: Some(vec! [ Ability {
+                trigger: Trigger::Activated,
+                cost: Cost::Tap,
+                effect: Effect::ProduceMana(make_pool![ALL]),
+                availability: 1.0
+            }])
         };
     }
 }
-
 
 #[cfg(test)]
 mod tests {

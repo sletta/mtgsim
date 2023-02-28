@@ -93,7 +93,7 @@ fn main() {
     // game.setup();
 
     let settings = game::Settings {
-        turn_count: 10,
+        turn_count: 2,
         draw_card_on_turn_one: true
     };
     game.play(&settings);

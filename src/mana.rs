@@ -138,6 +138,10 @@ impl Mana {
         return other.is_colorless() || self.colors.intersects(other.colors)
     }
 
+    pub fn contains(&self, color : Color) -> bool {
+        return self.colors.contains(color);
+    }
+
     #[cfg(test)]
     pub fn can_pay_for_exactly(&self, other : &Mana) -> bool {
         return self.colors == other.colors && (self.is_colorless() || self.is_monocolor());
@@ -263,6 +267,20 @@ impl Pool {
     }
 }
 
+macro_rules! make_pool {
+    ( $( $x:expr ),* ) => {
+        {
+            let mut pool = Pool::new();
+            $(
+                pool.sequence.push($x);
+            )*
+            pool
+        }
+    };
+}
+
+pub (crate) use make_pool;
+
 #[cfg(test)]
 mod tests {
 
@@ -359,6 +377,20 @@ mod tests {
     }
 
     #[test]
+    fn test_mana_contains() {
+        assert!(ALL.contains(Color::Black));
+        assert!(ALL.contains(Color::Blue));
+        assert!(ALL.contains(Color::Green));
+        assert!(ALL.contains(Color::Red));
+        assert!(ALL.contains(Color::White));
+        assert!(!WHITE.contains(Color::Black));
+        assert!(!WHITE.contains(Color::Blue));
+        assert!(!WHITE.contains(Color::Green));
+        assert!(!WHITE.contains(Color::Red));
+        assert!(WHITE.contains(Color::White));
+    }
+
+    #[test]
     fn test_pool_can_pay_for() {
         let one_of_each_color = Pool { sequence: vec![ BLACK, BLUE, GREEN, RED, WHITE ] };
         let green_plus_2 = Pool { sequence: vec![ COLORLESS, COLORLESS, GREEN ] };
@@ -388,5 +420,15 @@ mod tests {
         let two_of_each_color = Pool { sequence: vec![ BLACK, BLUE, GREEN, RED, WHITE, BLACK, BLUE, GREEN, RED, WHITE ]};
         let freaky_cost_1 = Pool { sequence: vec![ GREEN, GREEN, RED, RED, WHITE, WHITE, BLUE, COLORLESS, COLORLESS, BLUE ]};
         assert!(two_of_each_color.can_pay_for(&freaky_cost_1));
+    }
+
+    #[test]
+    fn test_make_pool() {
+        let one_of_each_color = make_pool![ BLACK, BLUE, GREEN, RED, WHITE ];
+        assert_eq!(one_of_each_color.sequence[0], BLACK);
+        assert_eq!(one_of_each_color.sequence[1], BLUE);
+        assert_eq!(one_of_each_color.sequence[2], GREEN);
+        assert_eq!(one_of_each_color.sequence[3], RED);
+        assert_eq!(one_of_each_color.sequence[4], WHITE);
     }
 }

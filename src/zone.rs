@@ -8,6 +8,15 @@ pub struct Zone<'db> {
     pub cards: Vec<Card<'db>>
 }
 
+#[derive(Debug)]
+pub struct PipCounts {
+    black: f32,
+    blue: f32,
+    green: f32,
+    red: f32,
+    white: f32,
+}
+
 impl<'db> Zone<'db> {
 
     pub fn new(name : &str) -> Self {
@@ -83,11 +92,61 @@ impl<'db> Zone<'db> {
         return colors_in_zone;
     }
 
+    pub fn count_pips_in_mana_costs(&self) -> PipCounts {
+        let mut pip_counts = PipCounts::new();
+        for c in self.cards.iter() {
+            match &c.data.mana_cost {
+                Some(cost) => pip_counts.count_in_pool(cost),
+                None => ()
+            }
+        }
+        return pip_counts;
+    }
+
     pub fn dump(&self) {
         println!("Zone: {}, {} cards", self.name, self.cards.len());
         for card in self.cards.iter() {
             println!("   {}", card);
         }
+    }
+}
+
+impl PipCounts {
+    pub fn new() -> Self {
+        return PipCounts { black: 0.0, blue: 0.0, green: 0.0, red: 0.0, white: 0.0 };
+    }
+
+    pub fn count_in_mana(&mut self, m : &mana::Mana) {
+        if m.contains(mana::Color::Black) {
+            self.black += 1.0;
+        }
+        if m.contains(mana::Color::Blue) {
+            self.blue += 1.0;
+        }
+        if m.contains(mana::Color::Green) {
+            self.green += 1.0;
+        }
+        if m.contains(mana::Color::Red) {
+            self.red += 1.0;
+        }
+        if m.contains(mana::Color::White) {
+            self.white += 1.0;
+        }
+    }
+
+    pub fn count_in_pool(&mut self, pool : &mana::Pool) {
+        for m in pool.sequence.iter() {
+            self.count_in_mana(&m);
+        }
+    }
+
+    pub fn normalize(&mut self) {
+        let sum = self.black + self.blue + self.green + self.red + self.white;
+        self.black /= sum;
+        self.blue /= sum;
+        self.green /= sum;
+        self.red /= sum;
+        self.white /= sum;
     }
 
 }
