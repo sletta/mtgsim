@@ -7,7 +7,7 @@ pub struct DB {
 }
 
 fn name_to_file(name : &str) -> String {
-    return format!("cards.db/{}.json", name).to_owned();
+    return format!("cards.db/{}.json", name.to_owned().replace("/", "_")).to_owned();
 }
 
 fn parse_produced_mana(value : &json::JsonValue) -> Option<mana::Mana> {
@@ -101,8 +101,6 @@ fn parse_card_metadata(card : &mut card::CardData, object : &json::JsonValue) ->
         card.abilities = Some(vec![parse_ability(card, object)?]);
     }
 
-    card.produced_mana = card.calculate_produced_mana();
-
     return Ok(());
 }
 
@@ -181,9 +179,13 @@ impl DB {
 
         for object in json.members() {
             let name = object["name"].to_string().to_lowercase();
-            println!(" - adding metadata for '{}'", name);
             self.metadata.insert(name, object.clone());
         }
+    }
+
+    pub fn alias(&self, name : &str) -> Option<String> {
+        let json = self.metadata.get(name)?;
+        return Some(json["alias"].as_str()?.to_string().to_lowercase());
     }
 }
 

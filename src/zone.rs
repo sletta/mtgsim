@@ -69,7 +69,7 @@ impl<'db> Zone<'db> {
     }
 
     pub fn sort(&mut self) {
-        self.cards.sort_by(|a, b| a.data.cmc.cmp(&b.data.cmc));
+        self.cards.sort_by(|a, b| a.data.name.cmp(&b.data.name));
     }
 
     pub fn query(&self, card_type: Types) -> Vec<Card<'db>> {

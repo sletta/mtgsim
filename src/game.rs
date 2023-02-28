@@ -138,7 +138,6 @@ impl<'db, 'game> Turn<'db, 'game> {
         let mut lands_in_hand = self.game.hand.query(Types::Land);
         if lands_in_hand.len() == 0 {
             // try to draw lands?
-            println!(" -> no lands in hand, so not playing any...");
             return false;
         }
 
@@ -150,11 +149,8 @@ impl<'db, 'game> Turn<'db, 'game> {
         pips_in_mana_pool.count_in_pool(self.mana_pool.as_ref().unwrap());
         let has_pips_in_mana_pool = pips_in_mana_pool.normalize();
 
-        println!(" -> in-hand={:?}, in-pool={:?}, ", pips_in_hand, pips_in_mana_pool);
-
         if has_pips_in_hand && has_pips_in_mana_pool {
             let wanted_color = pips_in_hand.prioritized_delta(&pips_in_mana_pool);
-            println!(" -> wanted: {:?}", wanted_color);
             for color in wanted_color {
                 for land in &lands_in_hand {
                     match &land.data.produced_mana {
@@ -168,7 +164,6 @@ impl<'db, 'game> Turn<'db, 'game> {
             }
         }
 
-        println!(" -> giving up, just playing: {}", lands_in_hand[0]);
         self.play_land(&lands_in_hand[0]);
         return true;
     }

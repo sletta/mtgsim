@@ -1,27 +1,57 @@
 [ 
 
+{   "comment": "Basic Lands:" },
+
 {   "name": "Forest",   "cost": "tap",  "trigger": "activated",     "effect": { "type": "mana", "produce": "{G}" } },
 {   "name": "Island",   "cost": "tap",  "trigger": "activated",     "effect": { "type": "mana", "produce": "{U}" } },
 {   "name": "Mountain", "cost": "tap",  "trigger": "activated",     "effect": { "type": "mana", "produce": "{R}" } },
 {   "name": "Plains",   "cost": "tap",  "trigger": "activated",     "effect": { "type": "mana", "produce": "{W}" } },
 {   "name": "Swamp",    "cost": "tap",  "trigger": "activated",     "effect": { "type": "mana", "produce": "{B}" } },
+{   "name": "Wastes",   "cost": "tap",  "trigger": "activated",     "effect": { "type": "mana", "produce": "{C}" } },
 
-{   "name": "Temple of the False God",      "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
-{   "name": "Guildless Commons",            "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
+
+{   "comment": "Black lands:" },
+
+{   "name": "Castle Locthwain",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B}" } },
+
+
+{   "comment": "Green lands:" },
+
+{   "name": "The Hunter Maze",              "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{G}" } },
+{   "name": "Castle Garenbrig",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{G}" } },
+
+
+{   "comment": "Colorless Lands:" },
+
+{   "name": "Bonders' Enclave",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
 {   "name": "High Market",                  "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
+{   "name": "Guildless Commons",            "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
+{   "name": "Temple of the False God",      "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
+{   "name": "Karn's Bastion",               "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
+{   "name": "Blighted Woodland",            "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
+{   "name": "Myriad Landscape",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
+{   "name": "War Room",                     "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
 
 
-{   "name": "Opal Palace",                  "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
+{   "comment": "Golgari Lands:" },
 
 {   "name": "Temple of Malady",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G}" } },
 {   "name": "Foul Orchard",                 "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G}" } },
+{   "name": "Jungle Hollow",                "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G}" } },
 
-{   "name": "Bonder's Enclave",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
 
-{   "name": "Turntimber Symbiosis // Turntimber, Serpentine Wood", "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{G}" } },
-{   "name": "The Hunter Maze",              "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{G}" } },
+{   "comment": "5-color lands:" },
 
-{   "name": "Castle Locthwain",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B}" } }
+{   "name": "Opal Palace",                  "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
+{   "name": "Command Tower ",               "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
+
+
+{   "comment": "Aliases..." },
+{   "name": "Malakir Rebirth // Malakir Mire",                      "alias": "Swamp" },
+{   "name": "Turntimber Symbiosis // Turntimber, Serpentine Wood",  "alias": "Forest" },
+
+
+{   "comment": "Last entry" }
 
 ]
     

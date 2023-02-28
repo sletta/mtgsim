@@ -18,7 +18,7 @@ fn read_deck_list(file_name : &str) -> Result<Vec<DeckListEntry>, String> {
     let mut  deck_list : Vec<DeckListEntry> = Vec::new();
     let file = std::fs::File::open(file_name).unwrap();
     let lines = std::io::BufReader::new(file).lines();
-    let re = Regex::new(r"^(\d+)x\s+([\w\s',\-]+)").unwrap();
+    let re = Regex::new(r"^(\d+)x\s+([\w\s',\-\\/]+)").unwrap();
     for maybe_line in lines {
         let line = maybe_line.unwrap().clone();
         let captures = re.captures(&line).unwrap();
@@ -54,10 +54,17 @@ fn main() {
 
     let args = Arguments::parse();
 
-    let deck_list = read_deck_list(&args.decklist).unwrap();
-
     let mut db = carddb::DB::new();
     db.load_metadata(&args.metadata);
+
+
+    let mut deck_list = read_deck_list(&args.decklist).unwrap();
+    for entry in deck_list.iter_mut() {
+        match db.alias(&entry.name) {
+            Some(alias) => entry.name = alias,
+            None => ()
+        }
+    }
 
     let bullshit = vec![1, 2, 3, 4, 5, 6, 8];
     bullshit.iter().for_each(|n| println!("{}", n));
@@ -70,7 +77,6 @@ fn main() {
                 assert_eq!(e.count, 1);
                 found_commander = true;
             }
-            println!("{:?}", card_data);
         },
         None => panic!("failed to load card: {}", e.name)
     });
