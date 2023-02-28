@@ -3,6 +3,8 @@ use crate::card::*;
 use crate::mana::*;
 use rand::distributions::{Distribution, Uniform};
 
+use std::cmp::Ordering;
+
 #[derive(Clone)]
 pub struct Game<'db> {
     pub library: Zone<'db>,
@@ -54,30 +56,18 @@ impl<'db> Game<'db> {
         if card.data.enters_tapped {
             card.tapped = true;
         }
+        println!(" -> playing: {}", card);
         self.battlefield.add(card);
+
     }
 
     pub fn gather_mana_pool(&self) -> Pool {
         let mut pool = Pool::new();
-        for c in self.battlefield.cards.iter() {
-            match &c.data.abilities {
-                Some(abilities) => {
-                    for ability in abilities.iter() {
-                        match &ability.effect {
-                            Effect::ProduceMana(pool_in_effect) => {
-                                match &ability.cost {
-                                    Tap => if !c.tapped {
-                                        pool.add(&pool_in_effect)
-                                    },
-                                    _ => ()
-                                }
-                            }
-                            _ => ()
-                        }
-                    }
-                },
-                None => ()
+        for (card, abilities) in self.battlefield.cards.iter().filter_map(|c| Some((c, c.data.abilities.as_ref()?))) {
+            if card.tapped {
+                continue;
             }
+            add_mana_production_to_pool(&abilities, &mut pool);
         }
         return pool;
     }
@@ -134,6 +124,7 @@ impl<'db, 'game> Turn<'db, 'game> {
         }
 
         // self.game.hand.sort();
+        println!("Mana Pool: {}", self.mana_pool.as_ref().unwrap());
         self.game.hand.dump();
         self.game.battlefield.sort();
         self.game.battlefield.dump();
@@ -144,53 +135,82 @@ impl<'db, 'game> Turn<'db, 'game> {
             return false;
         }
 
-        let lands_in_hand = self.game.hand.query(Types::Land);
+        let mut lands_in_hand = self.game.hand.query(Types::Land);
         if lands_in_hand.len() == 0 {
             // try to draw lands?
+            println!(" -> no lands in hand, so not playing any...");
             return false;
         }
 
-        let mut pips_in_hand = self.game.hand.count_pips_in_mana_costs();
-        pips_in_hand.normalize();
+        sort_cards_on_colors_produced(&mut lands_in_hand);
 
+        let mut pips_in_hand = self.game.hand.count_pips_in_mana_costs();
+        let has_pips_in_hand = pips_in_hand.normalize();
         let mut pips_in_mana_pool = PipCounts::new();
         pips_in_mana_pool.count_in_pool(self.mana_pool.as_ref().unwrap());
-        // pips_in_mana_pool.normalize();
+        let has_pips_in_mana_pool = pips_in_mana_pool.normalize();
 
-        println!(" -> pips in hand: {:?}", pips_in_hand);
-        println!(" -> pips_in_mana_pool: {:?}", pips_in_mana_pool);
-        println!(" -> pools: {:?}", self.mana_pool);
+        println!(" -> in-hand={:?}, in-pool={:?}, ", pips_in_hand, pips_in_mana_pool);
 
-        let colors_in_play = self.game.battlefield.find_produced_colors();
-        let mut colors_in_hand = self.game.hand.find_produced_colors();
-        println!(" -> {} in place, {} in hand", colors_in_play, colors_in_hand);
-
-        colors_in_hand.subtract(&colors_in_play);
-
-        let mut id : Option<u32> = None;
-        if colors_in_hand != COLORLESS {
-            println!(" -> colors {} is not in play, try to play that...", colors_in_hand);
-            for i in lands_in_hand.iter() {
-                match &i.data.produced_mana {
-                    Some(mana) => {
-                        if mana.can_pay_for(&colors_in_hand) {
-                            id = Some(i.id);
-                        }
-                    },
-                    None => { }
+        if has_pips_in_hand && has_pips_in_mana_pool {
+            let wanted_color = pips_in_hand.prioritized_delta(&pips_in_mana_pool);
+            println!(" -> wanted: {:?}", wanted_color);
+            for color in wanted_color {
+                for land in &lands_in_hand {
+                    match &land.data.produced_mana {
+                        Some(mana) => if mana.contains(color) {
+                            self.play_land(land);
+                            return true;
+                        },
+                        None => ()
+                    }
                 }
             }
-        } else {
-            id = Some(lands_in_hand[0].id);
         }
 
-        if id.is_some() {
-            self.game.play_card(id.unwrap());
-            self.lands_played += 1;
-            return true;
-        }
+        println!(" -> giving up, just playing: {}", lands_in_hand[0]);
+        self.play_land(&lands_in_hand[0]);
+        return true;
+    }
 
-        return false;
+    fn play_land(&mut self, card : &Card<'db>) {
+        self.lands_played += 1;
+        assert!(self.lands_played <= self.land_limit);
+
+        self.game.play_card(card.id);
+
+        if let Some(pool) = self.mana_pool.as_mut() {
+            match &card.data.abilities {
+                Some(abilities) => add_mana_production_to_pool(&abilities, pool),
+                None => ()
+            }
+        }
+    }
+}
+
+fn sort_cards_on_colors_produced(cards : &mut Vec<Card>) {
+    cards.sort_by(|a, b| {
+        let colors_in_a : u32 = match &a.data.produced_mana {
+            Some(mana) => mana.color_count(),
+            None => 0
+        };
+        let colors_in_b : u32 = match &b.data.produced_mana {
+            Some(mana) => mana.color_count(),
+            None => 0
+        };
+        return colors_in_b.cmp(&colors_in_a);
+    });
+}
+
+fn add_mana_production_to_pool(abilities : &Vec<Ability>, pool : &mut Pool)
+{
+    for ability in abilities.iter() {
+        match &ability.trigger { Trigger::Activated => (), _ => continue }
+        match &ability.cost { Cost::Tap => (), _ => continue }
+        match &ability.effect {
+            Effect::ProduceMana(produced_mana) => pool.add(produced_mana),
+            _ => continue
+        }
     }
 }
 
@@ -205,17 +225,42 @@ mod tests {
         let swamp_data = CardData::make_swamp_data();
         let command_tower_data = CardData::make_command_tower_data();
         let commanders_sphere_data = CardData::make_commanders_sphere_data();
+        let elk_data = CardData::make_elk_data();
 
         let mut game : Game = Game::new();
         game.battlefield.add(Card::new_with_id(1, &command_tower_data));
         game.battlefield.add(Card::new_with_id(2, &sol_ring_data));
         game.battlefield.add(Card::new_with_id(3, &swamp_data));
         game.battlefield.add(Card::new_with_id(4, &commanders_sphere_data));
+        game.battlefield.add(Card::new_with_id(5, &elk_data));
 
         let pool = game.gather_mana_pool();
-
         assert_eq!(pool.count(&COLORLESS), 2);
         assert_eq!(pool.count(&ALL), 2);
         assert_eq!(pool.count(&BLACK), 1);
     }
+
+    #[test]
+    fn test_game_sort_cards_on_colors_produced() {
+        let swamp_data = CardData::make_swamp_data();
+        let command_tower_data = CardData::make_command_tower_data();
+        let jungle_hollow_data = CardData::make_jungle_hollow_data();
+        let elk_data = CardData::make_elk_data();
+
+        let mut cards = vec![
+            Card::new_with_id(1, &swamp_data),
+            Card::new_with_id(2, &elk_data),
+            Card::new_with_id(3, &command_tower_data),
+            Card::new_with_id(4, &jungle_hollow_data),
+        ];
+
+        sort_cards_on_colors_produced(&mut cards);
+        assert_eq!(cards[0].id, 3); // command tower
+        assert_eq!(cards[1].id, 4); // jungle hollow
+        assert_eq!(cards[2].id, 1); // swamp
+        assert_eq!(cards[3].id, 2); // elk
+    }
 }
+
+// Rules for playing land:
+

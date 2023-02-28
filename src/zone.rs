@@ -140,13 +140,73 @@ impl PipCounts {
         }
     }
 
-    pub fn normalize(&mut self) {
+    pub fn normalize(&mut self) -> bool {
         let sum = self.black + self.blue + self.green + self.red + self.white;
+        if sum == 0.0 {
+            return false;
+        }
         self.black /= sum;
         self.blue /= sum;
         self.green /= sum;
         self.red /= sum;
         self.white /= sum;
+        return true;
+    }
+
+    pub fn prioritized_delta(&self, other : &PipCounts) -> Vec<mana::Color> {
+        // both inputs should have been normalized..
+        assert!(self.black >= 0.0 && self.black <= 1.0);
+        assert!(self.blue >= 0.0 && self.blue <= 1.0);
+        assert!(self.green >= 0.0 && self.green <= 1.0);
+        assert!(self.red >= 0.0 && self.red <= 1.0);
+        assert!(self.white >= 0.0 && self.white <= 1.0);
+        assert!(other.black >= 0.0 && other.black <= 1.0);
+        assert!(other.blue >= 0.0 && other.blue <= 1.0);
+        assert!(other.green >= 0.0 && other.green <= 1.0);
+        assert!(other.red >= 0.0 && other.red <= 1.0);
+        assert!(other.white >= 0.0 && other.white <= 1.0);
+
+        let mut v : Vec<(f32, mana::Color)> = Vec::new();
+        if self.black > 0.0 && self.black > other.black {
+            v.push((other.black - self.black, mana::Color::Black));
+        }
+        if self.blue > 0.0 && self.blue > other.blue {
+            v.push((other.blue - self.blue, mana::Color::Blue));
+        }
+        if self.green > 0.0 && self.green > other.green {
+            v.push((other.green - self.green, mana::Color::Green));
+        }
+        if self.red > 0.0 && self.red > other.red {
+            v.push((other.red - self.red, mana::Color::Red));
+        }
+        if self.white > 0.0 && self.white > other.white {
+            v.push((other.white - self.white, mana::Color::White));
+        }
+        v.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
+        return v.iter().map(|(_, color)| color.clone()).collect();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn test_pipcount_prioritized_delta() {
+        let hand = PipCounts {
+            black: 0.35,
+            blue: 0.1,
+            green: 0.2,
+            red: 0.3,
+            white: 0.05
+        };
+        assert_eq!(hand.prioritized_delta(&PipCounts { black: 1.0, blue: 0.0, green: 0.0, red: 0.0, white: 0.0 }),
+                   vec![mana::Color::Red, mana::Color::Green, mana::Color::Blue, mana::Color::White]);
+        assert_eq!(hand.prioritized_delta(&PipCounts { black: 0.4, blue: 0.0, green: 0.3, red: 0.3, white: 0.0 }),
+                   vec![mana::Color::Blue, mana::Color::White]);
+        assert_eq!(hand.prioritized_delta(&PipCounts { black: 0.2, blue: 0.2, green: 0.2, red: 0.2, white: 0.2 }),
+                   vec![mana::Color::Black, mana::Color::Red]);
     }
 
 }

@@ -154,6 +154,10 @@ impl Mana {
     pub fn subtract(&mut self, other : &Mana) {
         self.colors.remove(other.colors);
     }
+
+    pub fn color_count(&self) -> u32 {
+        return self.colors.len() as u32;
+    }
 }
 
 impl Pool {
@@ -174,6 +178,14 @@ impl Pool {
 
     pub fn count(&self, color : &Mana) -> u32 {
         return self.sequence.iter().filter(|m| m.colors == color.colors).count() as u32;
+    }
+
+    pub fn union_of_all_colors(&self) -> Mana {
+        let mut mana = Mana::new();
+        for m in self.sequence.iter() {
+            mana.unite(m);
+        }
+        return mana;
     }
 
     pub fn parse_cost(cost : &str) -> Result<Self, String> {

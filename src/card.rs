@@ -191,6 +191,17 @@ impl<'db> std::fmt::Display for Card<'db> {
 }
 
 impl CardData {
+
+    pub fn calculate_produced_mana(&self) -> Option<Mana> {
+        for ability in self.abilities.as_ref()?.iter() {
+            match &ability.effect {
+                Effect::ProduceMana(pool) => return Some(pool.union_of_all_colors()),
+                _ => ()
+            }
+        }
+        return None;
+    }
+
     #[cfg(test)]
     pub fn make_sol_ring_data() -> CardData {
         return CardData {
@@ -283,6 +294,39 @@ impl CardData {
                 effect: Effect::ProduceMana(make_pool![ALL]),
                 availability: 1.0
             }])
+        };
+    }
+
+    #[cfg(test)]
+    pub fn make_jungle_hollow_data() -> CardData {
+        return CardData {
+            name: "Jungle Hollow".to_string(),
+            cmc: 0,
+            mana_cost: None,
+            type_string: "Land".to_string(),
+            types: enumflags2::make_bitflags!(Types::{Land}),
+            produced_mana: Some(Mana::make_dual(Color::Black, Color::Green)),
+            enters_tapped: true,
+            abilities: Some(vec![ Ability {
+                trigger: Trigger::Activated,
+                cost: Cost::Tap,
+                effect: Effect::ProduceMana(make_pool![Mana::make_dual(Color::Black, Color::Green)]),
+                availability: 1.0
+            }])
+        };
+    }
+
+    #[cfg(test)]
+    pub fn make_elk_data() -> CardData {
+        return CardData {
+            name: "Just an Elk".to_string(),
+            cmc: 3,
+            mana_cost: Some(make_pool![COLORLESS, COLORLESS, GREEN]),
+            type_string: "Creature".to_string(),
+            types: enumflags2::make_bitflags!(Types::{Creature}),
+            produced_mana: None,
+            enters_tapped: false,
+            abilities: None
         };
     }
 }

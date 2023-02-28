@@ -29,70 +29,79 @@ fn parse_enters_tapped(name : &str, oracle_text : &str) -> bool {
     }
 }
 
+fn parse_cost(object : &json::JsonValue) -> Result<card::Cost, String> {
+    fn parse_cost_string(string : &str) -> Result<card::Cost, String> {
+        match string {
+            "tap" => Ok(card::Cost::Tap),
+            _ => Err("invalid 'cost' string!".to_string())
+        }
+    }
+    match &object["cost"] {
+        json::JsonValue::Short(txt) => parse_cost_string(txt),
+        json::JsonValue::String(txt) => parse_cost_string(txt),
+        _ => Err("invalid 'cost' value".to_string())
+    }
+}
+
+fn parse_trigger(object : &json::JsonValue) -> Result<card::Trigger, String> {
+    fn parse_trigger_string(string : &str) -> Result<card::Trigger, String> {
+        match string {
+            "activated" => Ok(card::Trigger::Activated),
+            _ => Err("invalid 'trigger' string".to_string())
+        }
+    }
+    match &object["trigger"] {
+        json::JsonValue::Short(txt) => parse_trigger_string(txt),
+        json::JsonValue::String(txt) => parse_trigger_string(txt),
+        _ => Err("invalid 'trigger' value!".to_string())
+    }
+}
+
+fn parse_effect_mana(object : &json::object::Object) -> Result<card::Effect, String> {
+
+    match object["produce"].as_str() {
+        Some(string) => Ok(card::Effect::ProduceMana(mana::Pool::parse_cost(string)?)),
+        None => Err("invalid 'mana::produce' value".to_string())
+    }
+}
+
+fn parse_effect(object : &json::JsonValue) -> Result<card::Effect, String> {
+    match &object["effect"] {
+        json::JsonValue::Object(effect_object) => {
+            match effect_object["type"].as_str() {
+                Some("mana") => parse_effect_mana(effect_object),
+                _ => Err("invalid 'effect::type' string".to_string())
+            }
+        },
+        _ => Err("invalid 'effect' value!".to_string())
+    }
+}
+
+fn parse_availability(object : &json::JsonValue) -> f32 {
+    if let Some(availability) = object["availability"].as_f32() {
+        return availability;
+    }
+    return 1.0;
+}
+
+fn parse_ability(card : &mut card::CardData, object : &json::JsonValue) -> Result<card::Ability, String> {
+    return Ok(card::Ability {
+        trigger: parse_trigger(object)?,
+        cost : parse_cost(object)?,
+        effect : parse_effect(object)?,
+        availability : parse_availability(object)
+    });
+}
+
 fn parse_card_metadata(card : &mut card::CardData, object : &json::JsonValue) -> Result<(), String> {
 
-    // fn parse_produces_tag(object : &json::JsonValue) -> Result<mana::Pool, String> {
-    //     match object["produces"].as_str() {
-    //         None => return Err("missing 'produces' property".to_string()),
-    //         Some(mana_string) => {
-    //             return mana::Pool::parse_cost(mana_string);
-    //         }
-    //     }
-    // }
+    if object.has_key("abilities") {
+        return Err("array / object based 'abilities' is currently not implemented...".to_string());
+    } else {
+        card.abilities = Some(vec![parse_ability(card, object)?]);
+    }
 
-    // fn parse_count_tag(object : &json::JsonValue) -> Result<Vec<i32>, String> {
-    //     match &object["count"] {
-    //         json::JsonValue::Number(value) => {
-    //             println!("that stupid value is: {:?}", value);
-    //             return Err("god damnit...".to_string());
-    //         },
-    //         json::JsonValue::Array(array) => return Ok(array.iter().map(|j| j.as_i32().unwrap()).collect()),
-    //         _ => return Err("invald 'count' tag".to_string())
-    //     }
-    // }
-
-    // match object["ramp"].as_str() {
-    //     None => { }, // this is ok
-    //     Some("land-to-battlefield") => {
-    //         match &object["land_type"] {
-    //             json::JsonValue::String(type_string) => card.ramp = Some(card::Ramp::LandToBattlefield(vec![type_string.to_string()])),
-    //             json::JsonValue::Array(type_strings) => {
-    //                 let list = type_strings.iter().map(|s| s.to_string()).collect();
-    //                 card.ramp = Some(card::Ramp::LandToBattlefield(list))
-    //             },
-    //             _ => return Err("missing 'land_type' when parsing 'land-fetch'".to_string())
-    //         }
-    //     },
-    //     Some("mana-producer") => {
-    //         card.ramp = Some(card::Ramp::ManaProducer(parse_produces_tag(object)?));
-    //     }
-    //     Some(_) => return Err("invalid ramp type".to_string())
-    // }
-
-    // match object["land"].as_str() {
-    //     None => { }, // this is ok..
-    //     Some("mana-producer") => {
-    //         card.land_mana = Some(parse_produces_tag(object)?);
-    //     },
-    //     Some(_) => return Err("invalid 'land' type".to_string())
-    // }
-
-    // if object.has_key("draw") {
-    //     let count = parse_count_tag(object)
-    //         .unwrap_or_else(|e| panic!("'count' failed, error={:?}, name={:?}, json={:?}",
-    //                                    e,
-    //                                    card.name,
-    //                                    object));
-    //     match object["draw"].as_str() {
-    //         Some("one-shot") => card.draw = Some(card::Draw::OneShot(count)),
-    //         Some("per-turn") => card.draw = Some(card::Draw::PerTurn(count)),
-    //         Some("activated") => {
-    //             let cost = mana::Pool::parse_cost(object["draw-cost"].as_str().unwrap())?;
-    //             card.draw = Some(card::Draw::Activated(count, cost));
-    //         }
-    //         _ => return Err("invalid key for 'draw'".to_string())
-    //     }
-    // }
+    card.produced_mana = card.calculate_produced_mana();
 
     return Ok(());
 }
@@ -172,6 +181,7 @@ impl DB {
 
         for object in json.members() {
             let name = object["name"].to_string().to_lowercase();
+            println!(" - adding metadata for '{}'", name);
             self.metadata.insert(name, object.clone());
         }
     }

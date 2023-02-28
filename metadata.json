@@ -1,26 +1,27 @@
 [ 
 
-{   "name": "Forest",               "land": "mana-producer",        "produces": "{G}" },
-{   "name": "Island",               "land": "mana-producer",        "produces": "{U}" },
-{   "name": "Mountain",             "land": "mana-producer",        "produces": "{R}" },
-{   "name": "Plains",               "land": "mana-producer",        "produces": "{W}" },
-{   "name": "Swamp",                "land": "mana-producer",        "produces": "{B}" },
-{   "name": "Wastes",               "land": "mana-producer",        "produces": "{C}" },
+{   "name": "Forest",   "cost": "tap",  "trigger": "activated",     "effect": { "type": "mana", "produce": "{G}" } },
+{   "name": "Island",   "cost": "tap",  "trigger": "activated",     "effect": { "type": "mana", "produce": "{U}" } },
+{   "name": "Mountain", "cost": "tap",  "trigger": "activated",     "effect": { "type": "mana", "produce": "{R}" } },
+{   "name": "Plains",   "cost": "tap",  "trigger": "activated",     "effect": { "type": "mana", "produce": "{W}" } },
+{   "name": "Swamp",    "cost": "tap",  "trigger": "activated",     "effect": { "type": "mana", "produce": "{B}" } },
 
-{   "name": "Rampant Growth",       "ramp": "land-to-battlefield",  "land_type": "basic land" },
-{   "name": "Vastwood Surge",       "ramp": "land-to-battlefield",  "land_type": [ "basic land", "basic land" ] },
+{   "name": "Temple of the False God",      "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
+{   "name": "Guildless Commons",            "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
+{   "name": "High Market",                  "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
 
-{   "name": "Commander's Sphere",   "ramp": "mana-producer",        "produces": "{B/G/R/W/U}" },
-{   "name": "Sol Ring",             "ramp": "mana-producer",        "produces": "{C}{C}" },
-{   "name": "Replicating Ring",     "ramp": "mana-producer",        "produces": "{B/G/R/W/U}" },
 
-{   "name": "Mask of Griselbrand",  "draw": "activated",            "count": [2, 3, 4, 5, 6, 7], "draw-cost": "{C}{C}{C}" },
+{   "name": "Opal Palace",                  "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
 
-{   "name": "Armorcraft Judge",     "draw": "one-shot",             "count": [1, 2, 2, 3, 3, 3, 4, 4, 5, 6] },
-{   "name": "Harmonize",            "draw": "one-shot",             "count": 3 },
+{   "name": "Temple of Malady",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G}" } },
+{   "name": "Foul Orchard",                 "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G}" } },
 
-{   "name": "Elemental Bond",       "draw": "per-turn",             "count": [0, 0, 1, 1, 1, 1, 2, 2, 3, 4] },
-{   "name": "Phyrexian Arena",      "draw": "per-turn",             "count": 1 }
+{   "name": "Bonder's Enclave",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
+
+{   "name": "Turntimber Symbiosis // Turntimber, Serpentine Wood", "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{G}" } },
+{   "name": "The Hunter Maze",              "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{G}" } },
+
+{   "name": "Castle Locthwain",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B}" } }
 
 ]
     

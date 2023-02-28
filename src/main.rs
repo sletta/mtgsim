@@ -45,6 +45,9 @@ struct Arguments {
 
     #[arg(short, long)]
     commander : String,
+
+    #[arg(short, long, default_value_t = 10)]
+    rounds_count : u32,
 }
 
 fn main() {
@@ -67,6 +70,7 @@ fn main() {
                 assert_eq!(e.count, 1);
                 found_commander = true;
             }
+            println!("{:?}", card_data);
         },
         None => panic!("failed to load card: {}", e.name)
     });
@@ -90,10 +94,8 @@ fn main() {
         }
     });
 
-    // game.setup();
-
     let settings = game::Settings {
-        turn_count: 2,
+        turn_count: args.rounds_count,
         draw_card_on_turn_one: true
     };
     game.play(&settings);
