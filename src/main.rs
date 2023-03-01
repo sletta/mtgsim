@@ -34,6 +34,17 @@ fn read_deck_list(file_name : &str) -> Result<Vec<DeckListEntry>, String> {
     return Ok(deck_list);
 }
 
+fn parse_mulligan(txt : &Option<String>) -> game::MulliganType {
+    match txt {
+        Some(text) => match text.as_str() {
+            "3-lands" => game::MulliganType::ThreeLands,
+            "none" => game::MulliganType::None,
+            _ => panic!("invalid mulligan type specified, only '3-lands' and 'nona' are available..")
+        },
+        None => game::MulliganType::None
+    }
+}
+
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Arguments {
@@ -47,7 +58,19 @@ struct Arguments {
     commander : String,
 
     #[arg(short, long, default_value_t = 10)]
-    rounds_count : u32,
+    rounds : u32,
+
+    #[arg(short, long, default_value_t = 1)]
+    games : u32,
+
+    #[arg(long, default_value_t = false)]
+    verbose_db : bool,
+
+    #[arg(long, default_value_t = false)]
+    verbose_game : bool,
+
+    #[arg(long)]
+    mulligan : Option<String>
 }
 
 fn main() {
@@ -55,8 +78,10 @@ fn main() {
     let args = Arguments::parse();
 
     let mut db = carddb::DB::new();
+    if args.verbose_db {
+        db.verbose = true;
+    }
     db.load_metadata(&args.metadata);
-
 
     let mut deck_list = read_deck_list(&args.decklist).unwrap();
     for entry in deck_list.iter_mut() {
@@ -85,50 +110,40 @@ fn main() {
         panic!("commander {} was not found in the decklist...", args.commander);
     }
 
-    let mut game = game::Game::new();
+    let mut stem_game = game::Game::new();
+    if args.verbose_game {
+        stem_game.verbose = true;
+    }
 
     deck_list.iter().for_each(|e| {
         let card_data = &db.entries[&e.name];
         let card = card::Card::new(&card_data);
         if card_data.name == args.commander {
             assert_eq!(e.count, 1);
-            game.command.add(card);
+            stem_game.command.add(card);
         } else {
             for _ in 0..e.count {
-                game.library.add(card.clone())
+                stem_game.library.add(card.clone())
             }
         }
     });
 
     let settings = game::Settings {
-        turn_count: args.rounds_count,
-        draw_card_on_turn_one: true
+        turn_count: args.rounds,
+        draw_card_on_turn_one: true,
+        mulligan : parse_mulligan(&args.mulligan),
     };
-    game.play(&settings);
 
-    // game.dump();
+    let mut stats : Vec<game::GameStats> = Vec::new();
 
-    // for (entry in )
-    // deck_list.iter().for_each(|e| println!("{:?}", e) );
+    for _ in 0..args.games {
+        let mut game = stem_game.clone();
+        game.play(&settings);
+        stats.push(game.game_stats.clone());
+    }
 
-    // let deck_list = read_deck_list(&deck_list_name.unwrap()).unwrap();
-
-    // let mut db = carddb::DB::new();
-
-    // db.load_metadata(&card_metadata_name.unwrap());
-
-    // for entry in &deck_list {
-    //     db.load(&entry.name).expect("loading card failed!");
-    // }
-
-    // let mut game = game::Game::new();
-    // for entry in &deck_list {
-    //     let card : &card::Card = &db.entries[&entry.name];
-    //     for _i in 0..entry.count {
-    //         game.library.add(card.clone());
-    //     }
-    // }
-
-    // game.setup();
+    for s in stats {
+        println!("{:?}", s);
+    }
 
 }

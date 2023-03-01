@@ -3,7 +3,8 @@ use crate::card;
 
 pub struct DB {
     pub entries : std::collections::HashMap<String, card::CardData>,
-    metadata : std::collections::HashMap<String, json::JsonValue>
+    metadata : std::collections::HashMap<String, json::JsonValue>,
+    pub verbose : bool
 }
 
 fn name_to_file(name : &str) -> String {
@@ -84,7 +85,7 @@ fn parse_availability(object : &json::JsonValue) -> f32 {
     return 1.0;
 }
 
-fn parse_ability(card : &mut card::CardData, object : &json::JsonValue) -> Result<card::Ability, String> {
+fn parse_ability(object : &json::JsonValue) -> Result<card::Ability, String> {
     return Ok(card::Ability {
         trigger: parse_trigger(object)?,
         cost : parse_cost(object)?,
@@ -98,7 +99,7 @@ fn parse_card_metadata(card : &mut card::CardData, object : &json::JsonValue) ->
     if object.has_key("abilities") {
         return Err("array / object based 'abilities' is currently not implemented...".to_string());
     } else {
-        card.abilities = Some(vec![parse_ability(card, object)?]);
+        card.abilities = Some(vec![parse_ability(object)?]);
     }
 
     return Ok(());
@@ -110,17 +111,20 @@ impl DB {
         return Self {
             entries: std::collections::HashMap::new(),
             metadata: std::collections::HashMap::new(),
+            verbose: false,
         }
     }
 
     pub fn load(&mut self, name : &str) -> Option<&card::CardData> {
-        println!("loading: {}", name);
+        if self.verbose {
+            println!("loading: {}", name);
+        }
         let file_name = name_to_file(name);
         let contents;
 
         if !std::path::Path::new(&file_name).exists() {
-            println!(" -> downloading...");
             let url = format!("https://api.scryfall.com/cards/named?exact=\"{}\"", name);
+            println!(" -> downloading: {}...", url);
             let response = reqwest::blocking::get(&url).unwrap_or_else(|e| panic!("download failed: url={:?}, error={:?}", url, e));
             let text = response.text().unwrap();
             std::fs::write(&file_name, text.as_bytes()).expect("failed to write downloaded file...");
@@ -162,7 +166,12 @@ impl DB {
                     Ok(_) => { }
                 }
             },
-            None => println!(" - no metadata...")
+            None => println!("Missing metadata for: '{}'", entry.name)
+        }
+
+        if self.verbose {
+            println!("DB entry: '{}'", name);
+            println!("{:?}", entry);
         }
 
         self.entries.insert(name.to_string(), entry);
@@ -171,7 +180,9 @@ impl DB {
     }
 
     pub fn load_metadata(&mut self, name : &str) {
-        println!("loading metadata from: '{:?}'", name);
+        if self.verbose {
+            println!("loading metadata from: '{:?}'", name);
+        }
         let metadata_json = std::fs::read_to_string(&name).unwrap_or_else(|e| panic!("failed to load file, file={:?}, error={:?}", name, e));
         let json = json::parse(&metadata_json).unwrap_or_else(|e| panic!("failed to parse json, file_name={:?}, error={:?}", name, e));
 

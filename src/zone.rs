@@ -27,6 +27,10 @@ impl<'db> Zone<'db> {
         return self.cards.len() as u32;
     }
 
+    pub fn clear(&mut self) {
+        self.cards.clear();
+    }
+
     pub fn assign_ids(&mut self, first_id : u32) -> u32 {
         let mut id = first_id;
         for card in self.cards.iter_mut() {

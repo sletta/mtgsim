@@ -1,9 +1,9 @@
 use crate::zone::*;
 use crate::card::*;
 use crate::mana::*;
-use rand::distributions::{Distribution, Uniform};
+// use rand::distributions::{Distribution, Uniform};
 
-use std::cmp::Ordering;
+// use std::cmp::Ordering;
 
 #[derive(Clone)]
 pub struct Game<'db> {
@@ -12,11 +12,20 @@ pub struct Game<'db> {
     pub command: Zone<'db>,
     pub battlefield: Zone<'db>,
     pub graveyard: Zone<'db>,
+
+    pub verbose: bool,
+    pub game_stats : GameStats,
+}
+
+pub enum MulliganType {
+    None,
+    ThreeLands
 }
 
 pub struct Settings {
     pub draw_card_on_turn_one: bool,
     pub turn_count: u32,
+    pub mulligan : MulliganType,
 }
 
 struct Turn<'db, 'game> {
@@ -25,6 +34,20 @@ struct Turn<'db, 'game> {
     lands_played : u32,
     land_limit: u32,
     mana_pool : Option<Pool>,
+    turn_stats : TurnStats,
+}
+
+#[derive(Debug, Clone)]
+pub struct TurnStats {
+    pub turn_number: u32,
+    pub lands_played: u32,
+}
+
+#[derive(Debug, Clone)]
+pub struct GameStats {
+    pub mulligan_count: u32,
+    pub turn_commander_played : u32,
+    pub turn_stats : Vec<TurnStats>,
 }
 
 impl<'db> Game<'db> {
@@ -34,7 +57,13 @@ impl<'db> Game<'db> {
             hand: Zone::new("Hand"),
             command: Zone::new("Command"),
             battlefield: Zone::new("Battlefield"),
-            graveyard: Zone::new("Graveyard")
+            graveyard: Zone::new("Graveyard"),
+            verbose: false,
+            game_stats : GameStats {
+                mulligan_count: 0,
+                turn_commander_played: 0,
+                turn_stats: Vec::new()
+            },
         };
     }
 
@@ -56,7 +85,9 @@ impl<'db> Game<'db> {
         if card.data.enters_tapped {
             card.tapped = true;
         }
-        println!(" -> playing: {}", card);
+        if self.verbose {
+            println!(" -> playing: {}", card);
+        }
         self.battlefield.add(card);
 
     }
@@ -72,8 +103,32 @@ impl<'db> Game<'db> {
         return pool;
     }
 
-    pub fn play(&mut self, settings: &Settings) {
+    fn draw_and_mulligan(&mut self, settings: &Settings) {
+        match settings.mulligan {
+            MulliganType::ThreeLands => {
+                let original_library = self.library.clone();
+                self.library.shuffle();
+                self.draw_cards(7);
+                while self.hand.query(Types::Land).len() < 3 {
+                    if self.verbose {
+                        println!("Not enough lands in hand, doing a mulligan...");
+                        self.hand.dump();
+                    }
+                    self.library = original_library.clone();
+                    self.library.shuffle();
+                    self.hand.clear();
+                    self.draw_cards(7);
+                    self.game_stats.mulligan_count += 1;
+                }
+            },
+            MulliganType::None => {
+                self.library.shuffle();
+                self.draw_cards(7);
+            }
+        }
+    }
 
+    pub fn play(&mut self, settings: &Settings) {
         assert!(self.library.size() > 0);
         assert_eq!(self.hand.size(), 0);
         assert_eq!(self.battlefield.size(), 0);
@@ -82,8 +137,7 @@ impl<'db> Game<'db> {
         let id = self.command.assign_ids(1);
         self.library.assign_ids(id);
 
-        self.library.shuffle();
-        self.draw_cards(7);
+        self.draw_and_mulligan(settings);
 
         for i in 0..settings.turn_count {
             let mut turn = Turn::new(self, i + 1);
@@ -101,11 +155,17 @@ impl<'db, 'game> Turn<'db, 'game> {
             lands_played: 0,
             land_limit: 1,
             mana_pool: None,
+            turn_stats: TurnStats {
+                turn_number: turn,
+                lands_played: 0,
+            }
         }
     }
 
     pub fn play(&mut self, settings: &Settings) {
-        println!("\nPlaying turn: {}\n", self.turn_number);
+        if self.game.verbose {
+            println!("\nPlaying turn: {}\n", self.turn_number);
+        }
 
         // untap all
         self.game.battlefield.untap_all();
@@ -118,16 +178,16 @@ impl<'db, 'game> Turn<'db, 'game> {
             self.game.draw_cards(1);
         }
 
-
         while self.try_to_play_land() {
             continue;
         }
 
-        // self.game.hand.sort();
-        println!("Mana Pool: {}", self.mana_pool.as_ref().unwrap());
-        self.game.hand.dump();
-        self.game.battlefield.sort();
-        self.game.battlefield.dump();
+        if self.game.verbose {
+            println!("Mana Pool: {}", self.mana_pool.as_ref().unwrap());
+            self.game.hand.dump();
+            self.game.battlefield.sort();
+            self.game.battlefield.dump();
+        }
     }
 
     pub fn try_to_play_land(&mut self) -> bool {
