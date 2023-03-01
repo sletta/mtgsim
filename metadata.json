@@ -46,6 +46,12 @@
 {   "name": "Command Tower ",               "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
 
 
+{   "comment": "Ramp" },
+{   "name": "Commander's Sphere",           "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
+{   "name": "Replicating Ring",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
+{   "name": "Sol Ring",                     "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}{C}" } },
+
+
 {   "comment": "Aliases..." },
 {   "name": "Malakir Rebirth // Malakir Mire",                      "alias": "Swamp" },
 {   "name": "Turntimber Symbiosis // Turntimber, Serpentine Wood",  "alias": "Forest" },

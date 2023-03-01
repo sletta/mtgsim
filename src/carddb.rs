@@ -142,7 +142,7 @@ impl DB {
 
         let mut entry = card::CardData {
             name: json_object["name"].to_string(),
-            cmc: json_object["cmc"].as_f32().expect("cmc is not a number!") as i32,
+            cmc: json_object["cmc"].as_f32().expect("cmc is not a number!") as u32,
             mana_cost: match mana::Pool::parse_cost(&json_object["mana_cost"].to_string()) {
                 Ok(pool) => Some(pool),
                 Err(_) => None

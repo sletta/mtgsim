@@ -20,11 +20,11 @@ pub enum Types {
     "name": "Commander's Sphere",
     "abilities": [
         {
-            "when": "activated",
+            "trigger": "activated",
             "effect": { "type": "mana", "produces": "{B/G/R/W/U}" },
             "cost": "tap"
         }, {
-            "when": "activated",
+            "trigger": "activated",
             "effect": { "type": "draw", "count": "1" },
             "cost": "sacrifice",
         }
@@ -33,38 +33,38 @@ pub enum Types {
 
 {
     "name": "Evolving Wilds",
-    "when": "activated",
+    "trigger": "activated",
     "cost": "tap",
     "effect": { "type": "fetch-land", "to-battlefield": "basic land" }
 }
 
 {
     "name": "Farseek",
-    "when": "cast",
+    "trigger": "cast",
     "effect": { "type": "fetch-land", "to-battlefield": "mountain/island/plains/swamp" }
 },
 
 {
     "name": "Cultivate",
-    "when": "cast",
+    "trigger": "cast",
     "effect": { "type": "fetch-land", "to-battlefield": "basic land", "to-hand": "basic land" }
 },
 
 {
     "name": "Elemental Bond",
-    "when": "upkeep"
+    "trigger": "upkeep"
     "effect": { "type": "draw", "count": [0, 0, 1, 1, 1, 1, 2, 2, 3, 4] },
 }
 
 {
     "name": "War Room",
-    "abilitiies": [
+    "abilities": [
         {
-            "when": "activated",
+            "trigger": "activated",
             "effect": { "type": "mana", "produces": "{C}" },
             "cost": "tap"
         }, {
-            "when": "activated",
+            "trigger": "activated",
             "effect": { "type": "draw", "count": "1" },
             "cost": { "type": "tap-and-mana", "mana": {C}{C}{C}" },
             "availability": 0.5
@@ -72,6 +72,41 @@ pub enum Types {
         ]
     }
 }
+
+{
+    "name": "Black Market",
+    "trigger": "upkeep",
+    "availability": 0.5
+    "effect": {
+        "type": "mana",
+        "produce": "{B}{B}{B}{B}{B}{B}{B}{B}",
+    }
+},
+
+{
+    "name": "Blighted Woodland",
+    "abilities": [
+        {
+            "trigger": "activated",
+            "effect": { "type": "mana", "produces": "{C}" },
+            "cost": "tap"
+        }, {
+            "trigger": "activated",
+            "effect": { "type": "land-fetch", "to-battlefield": [ "basic land", "basic land" ] },
+            "cost": "tap-and-mana"
+            "mana-cost": "{3}{G}"
+        } ]
+
+
+{   "name": "Cultivate"
+{   "name": "Expand the Sphere"
+{   "name": "Far Wanderings"
+{   "name": "Myriad Landscape"
+{   "name": "Path of Discovery"
+{   "name": "Pyramid of the Pantheon"
+{   "name": "Scale the Heights"
+{   "name": "Vastwood Surge"
+
  */
 
 #[derive(Debug)]
@@ -110,7 +145,7 @@ pub struct Ability {
 #[derive(Debug)]
 pub struct CardData {
     pub name: String,
-    pub cmc: i32,
+    pub cmc: u32,
     pub mana_cost: Option<Pool>,
     pub type_string: String,
     pub types: BitFlags<Types>,
@@ -174,6 +209,26 @@ impl<'db> Card<'db> {
 
     pub fn is_type(&self, t : Types) -> bool {
         return self.data.types.contains(t);
+    }
+
+    pub fn is_ramp(&self) -> bool {
+        match &self.data.abilities {
+            Some(abilities) => for ability in abilities {
+                match &ability.effect {
+                    Effect::ProduceMana(_) => {
+                        if self.is_type(Types::Land) {
+                            continue;
+                        } else {
+                            return true;
+                        }
+                    },
+                    Effect::FetchLand{to_hand: _, to_battlefield: _} => return true,
+                    _ => continue,
+                }
+            },
+            None => (),
+        }
+        return false;
     }
 }
 

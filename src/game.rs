@@ -33,7 +33,8 @@ struct Turn<'db, 'game> {
     turn_number: u32,
     lands_played : u32,
     land_limit: u32,
-    mana_pool : Option<Pool>,
+    mana_pool : Pool,
+    mana_spent : Pool,
     turn_stats : TurnStats,
 }
 
@@ -41,13 +42,14 @@ struct Turn<'db, 'game> {
 pub struct TurnStats {
     pub turn_number: u32,
     pub lands_played: u32,
+    pub cards_played: u32,
 }
 
 #[derive(Debug, Clone)]
 pub struct GameStats {
     pub mulligan_count: u32,
     pub turn_commander_played : u32,
-    pub turn_stats : Vec<TurnStats>,
+    pub turns_stats : Vec<TurnStats>,
 }
 
 impl<'db> Game<'db> {
@@ -62,7 +64,7 @@ impl<'db> Game<'db> {
             game_stats : GameStats {
                 mulligan_count: 0,
                 turn_commander_played: 0,
-                turn_stats: Vec::new()
+                turns_stats: Vec::new()
             },
         };
     }
@@ -80,27 +82,13 @@ impl<'db> Game<'db> {
         }
     }
 
-    pub fn play_card(&mut self, id : u32) {
-        let mut card = self.hand.take(id).expect("card missing from hand!!!");
-        if card.data.enters_tapped {
-            card.tapped = true;
-        }
-        if self.verbose {
-            println!(" -> playing: {}", card);
-        }
-        self.battlefield.add(card);
-
-    }
-
-    pub fn gather_mana_pool(&self) -> Pool {
-        let mut pool = Pool::new();
+    pub fn gather_mana_pool(&self, pool : &mut Pool) {
         for (card, abilities) in self.battlefield.cards.iter().filter_map(|c| Some((c, c.data.abilities.as_ref()?))) {
             if card.tapped {
                 continue;
             }
-            add_mana_production_to_pool(&abilities, &mut pool);
+            add_mana_production_to_pool(&abilities, pool);
         }
-        return pool;
     }
 
     fn draw_and_mulligan(&mut self, settings: &Settings) {
@@ -140,8 +128,15 @@ impl<'db> Game<'db> {
         self.draw_and_mulligan(settings);
 
         for i in 0..settings.turn_count {
-            let mut turn = Turn::new(self, i + 1);
-            turn.play(&settings);
+
+            let turn_stats;
+            {
+                let mut turn = Turn::new(self, i + 1);
+                turn.play(&settings);
+                turn_stats = turn.turn_stats;
+            }
+
+            self.game_stats.turns_stats.push(turn_stats);
         }
     }
 }
@@ -154,10 +149,12 @@ impl<'db, 'game> Turn<'db, 'game> {
             turn_number: turn,
             lands_played: 0,
             land_limit: 1,
-            mana_pool: None,
+            mana_pool: Pool::new(),
+            mana_spent: Pool::new(),
             turn_stats: TurnStats {
                 turn_number: turn,
                 lands_played: 0,
+                cards_played: 0,
             }
         }
     }
@@ -171,19 +168,20 @@ impl<'db, 'game> Turn<'db, 'game> {
         self.game.battlefield.untap_all();
 
         // gather mana
-       self.mana_pool = Some(self.game.gather_mana_pool());
+       self.game.gather_mana_pool(&mut self.mana_pool);
 
         // draw card for turn..
         if self.turn_number > 1 || settings.draw_card_on_turn_one {
             self.game.draw_cards(1);
         }
 
-        while self.try_to_play_land() {
+        while self.try_to_play_land()
+            || self.try_to_ramp() {
             continue;
         }
 
         if self.game.verbose {
-            println!("Mana Pool: {}", self.mana_pool.as_ref().unwrap());
+            println!("Mana Pool: {}, spent: {}", self.mana_pool, self.mana_spent);
             self.game.hand.dump();
             self.game.battlefield.sort();
             self.game.battlefield.dump();
@@ -206,7 +204,7 @@ impl<'db, 'game> Turn<'db, 'game> {
         let mut pips_in_hand = self.game.hand.count_pips_in_mana_costs();
         let has_pips_in_hand = pips_in_hand.normalize();
         let mut pips_in_mana_pool = PipCounts::new();
-        pips_in_mana_pool.count_in_pool(self.mana_pool.as_ref().unwrap());
+        pips_in_mana_pool.count_in_pool(&self.mana_pool);
         let has_pips_in_mana_pool = pips_in_mana_pool.normalize();
 
         if has_pips_in_hand && has_pips_in_mana_pool {
@@ -228,18 +226,91 @@ impl<'db, 'game> Turn<'db, 'game> {
         return true;
     }
 
-    fn play_land(&mut self, card : &Card<'db>) {
-        self.lands_played += 1;
-        assert!(self.lands_played <= self.land_limit);
+    pub fn try_to_ramp(&mut self) -> bool {
 
-        self.game.play_card(card.id);
+        println!(" - trying to ramp...");
 
-        if let Some(pool) = self.mana_pool.as_mut() {
+        // TODO: Activate from battle field
+
+        let mut candidates : Vec<Card> = Vec::new();
+        for card in self.game.hand.cards.iter() {
+            if card.is_type(Types::Land)
+                || !card.is_ramp()
+                || self.mana_spent.converted_mana_cost() + card.data.cmc > self.mana_pool.converted_mana_cost() {
+                continue;
+            }
+
+            candidates.push(card.clone());
+            println!(" ---> ramp candidate: {}", card);
+        }
+
+        for card in candidates {
+            if self.play_card_if_mana_allows(&card) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    pub fn play_card(&mut self, id : u32) {
+        let mut card = self.game.hand.take(id).expect("card missing from hand!!!");
+        if card.data.enters_tapped {
+            card.tapped = true;
+        }
+        if self.game.verbose {
+            println!(" -> playing: {}", card);
+        }
+
+        if card.is_type(Types::Land) {
+            self.turn_stats.lands_played += 1;
+        } else {
+            self.turn_stats.cards_played += 1;
+        }
+
+        if card.is_type(Types::Instant) || card.is_type(Types::Sorcery) {
+            self.game.graveyard.add(card);
+        } else {
+            self.game.battlefield.add(card);
+        }
+    }
+
+    fn add_to_mana_pool_unless_tapped(&mut self, card: &Card<'db>) {
+        if !card.data.enters_tapped {
             match &card.data.abilities {
-                Some(abilities) => add_mana_production_to_pool(&abilities, pool),
+                Some(abilities) => add_mana_production_to_pool(&abilities, &mut self.mana_pool),
                 None => ()
             }
         }
+    }
+
+    fn play_land(&mut self, card : &Card<'db>) {
+        assert!(self.lands_played < self.land_limit);
+        self.lands_played += 1;
+        self.add_to_mana_pool_unless_tapped(card);
+        self.play_card(card.id);
+    }
+
+    fn play_card_if_mana_allows(&mut self, card : &Card<'db>) -> bool {
+
+        let mut total_cost = self.mana_spent.clone();
+        match &card.data.mana_cost {
+            Some(casting_cost) => total_cost.add(&casting_cost),
+            None => ()
+        }
+
+        if !self.mana_pool.can_pay_for(&total_cost) {
+            if self.game.verbose {
+                println!(" ---> cannot afford to play {}, total-cost={}, available={}", card, total_cost, self.mana_pool);
+            }
+            return false;
+        }
+
+        self.mana_spent = total_cost;
+        self.add_to_mana_pool_unless_tapped(card);
+        self.play_card(card.id);
+
+        return true;
     }
 }
 
@@ -289,7 +360,8 @@ mod tests {
         game.battlefield.add(Card::new_with_id(4, &commanders_sphere_data));
         game.battlefield.add(Card::new_with_id(5, &elk_data));
 
-        let pool = game.gather_mana_pool();
+        let mut pool = Pool::new();
+        game.gather_mana_pool(&mut pool);
         assert_eq!(pool.count(&COLORLESS), 2);
         assert_eq!(pool.count(&ALL), 2);
         assert_eq!(pool.count(&BLACK), 1);

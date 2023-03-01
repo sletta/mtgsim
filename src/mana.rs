@@ -129,7 +129,6 @@ impl Mana {
         return self.colors.is_empty();
     }
 
-    #[cfg(test)]
     pub fn is_monocolor(&self) -> bool {
         return self.colors.exactly_one() != None;
     }
@@ -142,7 +141,6 @@ impl Mana {
         return self.colors.contains(color);
     }
 
-    #[cfg(test)]
     pub fn can_pay_for_exactly(&self, other : &Mana) -> bool {
         return self.colors == other.colors && (self.is_colorless() || self.is_monocolor());
     }
@@ -167,7 +165,6 @@ impl Pool {
         return Self { sequence: Vec::new() };
     }
 
-    #[cfg(test)]
     pub fn converted_mana_cost(&self) -> u32 {
         return self.sequence.len() as u32;
     }
@@ -225,7 +222,6 @@ impl Pool {
         return Ok(mana_cost);
     }
 
-    #[cfg(test)]
     pub fn can_pay_for(&self, other : &Pool) -> bool {
         if other.converted_mana_cost() > self.converted_mana_cost() {
             return false;
