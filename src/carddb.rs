@@ -25,8 +25,15 @@ fn parse_produced_mana(value : &json::JsonValue) -> Option<mana::Mana> {
 fn parse_enters_tapped(name : &str, oracle_text : &str) -> bool {
     let pattern = format!("{} enters the battlefield tapped.", name);
     match oracle_text.to_lowercase().find(pattern.as_str()) {
-        Some(_i) => return true,
+        Some(_) => return true,
         None => return false
+    }
+}
+
+fn parse_mana_pool(object: &json::object::Object, property: &str) -> Result<mana::Pool, String> {
+    match object[property].as_str() {
+        Some(string) => Ok(mana::Pool::parse_cost(string)?),
+        None => Err("invalid 'mana::produce' value".to_string())
     }
 }
 
@@ -42,6 +49,14 @@ fn parse_cost(object : &json::JsonValue) -> Result<card::Cost, String> {
     match &object["cost"] {
         json::JsonValue::Short(txt) => parse_cost_string(txt),
         json::JsonValue::String(txt) => parse_cost_string(txt),
+        json::JsonValue::Object(cost_object) => {
+            match cost_object["type"].as_str() {
+                Some("tap") => Ok(card::Cost::Tap),
+                Some("none") => Ok(card::Cost::None),
+                Some("tap-mana-sacrifice") => Ok(card::Cost::TapManaSacrifice(parse_mana_pool(cost_object, "mana")?)),
+                _ => Err("invalid 'cost::type' value...".to_string()),
+            }
+        },
         json::JsonValue::Null => Ok(card::Cost::None),
         _ => Err("invalid 'cost' value".to_string())
     }
@@ -59,13 +74,6 @@ fn parse_trigger(object : &json::JsonValue) -> Result<card::Trigger, String> {
         json::JsonValue::Short(txt) => parse_trigger_string(txt),
         json::JsonValue::String(txt) => parse_trigger_string(txt),
         _ => Err("invalid 'trigger' value!".to_string())
-    }
-}
-
-fn parse_effect_mana(object : &json::object::Object) -> Result<card::Effect, String> {
-    match object["produce"].as_str() {
-        Some(string) => Ok(card::Effect::ProduceMana(mana::Pool::parse_cost(string)?)),
-        None => Err("invalid 'mana::produce' value".to_string())
     }
 }
 
@@ -89,11 +97,18 @@ fn parse_effect_land_fetch(object : &json::object::Object) -> Result<card::Effec
     });
 }
 
+fn parse_effect_mana(object : &json::object::Object) -> Result<card::Effect, String> {
+    match object["produce"].as_str() {
+        Some(string) => Ok(card::Effect::ProduceMana(mana::Pool::parse_cost(string)?)),
+        None => Err("invalid 'mana::produce' value".to_string())
+    }
+}
+
 fn parse_effect(object : &json::JsonValue) -> Result<card::Effect, String> {
     match &object["effect"] {
         json::JsonValue::Object(effect_object) => {
             match effect_object["type"].as_str() {
-                Some("mana") => parse_effect_mana(effect_object),
+                Some("mana") => Ok(card::Effect::ProduceMana(parse_mana_pool(effect_object, "produce")?)),
                 Some("land-fetch") => parse_effect_land_fetch(effect_object),
                 _ => Err("invalid 'effect::type' string".to_string())
             }
@@ -121,7 +136,15 @@ fn parse_ability(object : &json::JsonValue) -> Result<card::Ability, String> {
 fn parse_card_metadata(card : &mut card::CardData, object : &json::JsonValue) -> Result<(), String> {
 
     if object.has_key("abilities") {
-        return Err("array / object based 'abilities' is currently not implemented...".to_string());
+        let json_abilities = &object["abilities"];
+        if !json_abilities.is_array() {
+            return Err("'abilities' must be an array".to_string());
+        }
+        let mut abilities : Vec<card::Ability> = Vec::new();
+        for ability in json_abilities.members() {
+            abilities.push(parse_ability(ability)?);
+        }
+        card.abilities = Some(abilities);
     } else {
         card.abilities = Some(vec![parse_ability(object)?]);
     }

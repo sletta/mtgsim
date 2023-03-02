@@ -78,6 +78,9 @@ impl<'db> Game<'db> {
     pub fn draw_cards(&mut self, count : u32) {
         for _i in 0..count {
             let card = self.library.draw().expect("library is out of cards!!!");
+            if self.verbose {
+                println!(" - draw card: {}", card);
+            }
             self.hand.add(card);
         }
     }
@@ -100,7 +103,7 @@ impl<'db> Game<'db> {
                 while self.hand.query(Types::Land).len() < 3 {
                     if self.verbose {
                         println!("Not enough lands in hand, doing a mulligan...");
-                        self.hand.dump();
+                        // self.hand.dump();
                     }
                     self.library = original_library.clone();
                     self.library.shuffle();
@@ -160,15 +163,16 @@ impl<'db, 'game> Turn<'db, 'game> {
     }
 
     pub fn play(&mut self, settings: &Settings) {
+        self.game.battlefield.untap_all();
+        self.game.gather_mana_pool(&mut self.mana_pool);
+
         if self.game.verbose {
-            println!("\nPlaying turn: {}\n", self.turn_number);
+            println!("\n***** Turn #{} *****", self.turn_number);
+            println!(" - available mana: {} ({})", self.mana_pool, self.mana_pool.converted_mana_cost());
         }
 
-        // untap all
-        self.game.battlefield.untap_all();
-
-        // gather mana
-       self.game.gather_mana_pool(&mut self.mana_pool);
+        if self.game.verbose {
+        }
 
         // draw card for turn..
         if self.turn_number > 1 || settings.draw_card_on_turn_one {
@@ -181,7 +185,8 @@ impl<'db, 'game> Turn<'db, 'game> {
         }
 
         if self.game.verbose {
-            println!("Mana Pool: {} ({}), spent: {} ({})", self.mana_pool, self.mana_pool.converted_mana_cost(), self.mana_spent, self.mana_spent.converted_mana_cost());
+            println!(" - available mana: {} ({})", self.mana_pool, self.mana_pool.converted_mana_cost());
+            println!(" - spent mana: {} ({})", self.mana_spent, self.mana_spent.converted_mana_cost());
             self.game.hand.dump();
             self.game.battlefield.sort();
             self.game.battlefield.dump();
@@ -212,8 +217,11 @@ impl<'db, 'game> Turn<'db, 'game> {
         pips_in_mana_pool.count_in_pool(&self.mana_pool);
         let has_pips_in_mana_pool = pips_in_mana_pool.normalize();
 
-        if has_pips_in_hand && has_pips_in_mana_pool {
-            let wanted_color = pips_in_hand.prioritized_delta(&pips_in_mana_pool);
+        if has_pips_in_hand {
+            let wanted_color = match has_pips_in_mana_pool {
+                true => pips_in_hand.prioritized_delta(&pips_in_mana_pool),
+                false => pips_in_hand.prioritized_delta(&PipCounts::new())
+            };
 
             if self.game.verbose && wanted_color.len() > 0 {
                 println!(" --- land preference: {:?}", wanted_color[0]);

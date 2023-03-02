@@ -126,8 +126,8 @@ pub enum Cost {
     Tap,
     Mana(Pool),
     Sacrifice,
-    TapAndMana(Pool),
-    TapSacrificeMana(Pool)
+    TapMana(Pool),
+    TapManaSacrifice(Pool)
 }
 
 #[derive(Debug)]

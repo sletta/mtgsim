@@ -23,13 +23,29 @@
 
 {   "comment": "Colorless Lands:" },
 
+{   "name": "Blighted Woodland",            "abilities": [ {
+        "cost": "tap",
+        "trigger": "activated",
+        "effect": { "type": "mana", "produce": "{C}" }
+    }, {
+        "cost": { "type": "tap-mana-sacrifice", "mana": "{C}{C}{C}{G}" },
+        "trigger": "activated",
+        "effect": { "type": "land-fetch", "to-battlefield": [ "basic land", "basic land" ] }
+    } ] },
 {   "name": "Bonders' Enclave",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
-{   "name": "High Market",                  "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
 {   "name": "Guildless Commons",            "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
-{   "name": "Temple of the False God",      "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
+{   "name": "High Market",                  "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
 {   "name": "Karn's Bastion",               "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
-{   "name": "Blighted Woodland",            "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
-{   "name": "Myriad Landscape",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
+{   "name": "Myriad Landscape",             "abilities": [ {
+        "cost": "tap",
+        "trigger": "activated",
+        "effect": { "type": "mana", "produce": "{C}" }
+    }, {
+        "cost": { "type": "tap-mana-sacrifice", "mana": "{C}{C}" },
+        "trigger": "activated",
+        "effect": { "type": "land-fetch", "to-battlefield": [ "basic land", "basic land" ] }
+    } ] },
+{   "name": "Temple of the False God",      "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
 {   "name": "War Room",                     "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
 
 
