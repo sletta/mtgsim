@@ -98,33 +98,29 @@ pub enum Types {
         } ]
 
 
-{   "name": "Cultivate"
 {   "name": "Expand the Sphere"
-{   "name": "Far Wanderings"
 {   "name": "Myriad Landscape"
 {   "name": "Path of Discovery"
 {   "name": "Pyramid of the Pantheon"
 {   "name": "Scale the Heights"
-{   "name": "Vastwood Surge"
 
  */
 
 #[derive(Debug)]
 pub enum Effect {
-    None,
     ProduceMana(Pool), // like 'Dark Ritual'
     FetchLand { to_hand : Vec<String>, to_battlefield: Vec<String> }, // like 'Cultivate'
     Draw(Vec<u32>),                 // like 'Harmonize' or 'Read the Bones'
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Trigger {
     Cast,
     Activated,
     Upkeep
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Cost {
     None,
     Tap,

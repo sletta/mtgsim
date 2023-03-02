@@ -83,6 +83,18 @@ impl<'db> Zone<'db> {
         }).collect();
     }
 
+    pub fn take_land(&mut self, type_string : &str) -> Option<Card<'db>> {
+        let lower_cased_type_string = type_string.to_lowercase();
+        let mut i = 0;
+        while i < self.cards.len() {
+            if self.cards[i].data.type_string.to_lowercase().contains(&lower_cased_type_string) {
+                return Some(self.cards.remove(i));
+            }
+            i += 1;
+        }
+        return None;
+    }
+
     pub fn find_produced_colors(&self) -> mana::Mana {
         let mut colors_in_zone = mana::Mana::new();
         self.cards.iter().for_each(|c| {

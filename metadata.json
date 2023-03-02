@@ -48,8 +48,11 @@
 
 {   "comment": "Ramp" },
 {   "name": "Commander's Sphere",           "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
+{   "name": "Cultivate",                    "trigger": "cast", "effect": { "type": "land-fetch", "to-hand": "basic land", "to-battlefield": "basic land" } },
+{   "name": "Far Wanderings",               "trigger": "cast", "effect": { "type": "land-fetch", "to-battlefield": "basic land" } },
 {   "name": "Replicating Ring",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
 {   "name": "Sol Ring",                     "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}{C}" } },
+{   "name": "Vastwood Surge",               "trigger": "cast", "effect": { "type": "land-fetch", "to-battlefield": [ "basic land", "basic land" ] } },
 
 
 {   "comment": "Aliases..." },

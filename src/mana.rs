@@ -21,7 +21,7 @@ pub struct Mana {
     colors : BitFlags<Color>
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Pool {
     pub sequence: Vec<Mana>
 }

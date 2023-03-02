@@ -34,12 +34,15 @@ fn parse_cost(object : &json::JsonValue) -> Result<card::Cost, String> {
     fn parse_cost_string(string : &str) -> Result<card::Cost, String> {
         match string {
             "tap" => Ok(card::Cost::Tap),
+            "none" => Ok(card::Cost::None),
             _ => Err("invalid 'cost' string!".to_string())
         }
     }
+
     match &object["cost"] {
         json::JsonValue::Short(txt) => parse_cost_string(txt),
         json::JsonValue::String(txt) => parse_cost_string(txt),
+        json::JsonValue::Null => Ok(card::Cost::None),
         _ => Err("invalid 'cost' value".to_string())
     }
 }
@@ -48,6 +51,7 @@ fn parse_trigger(object : &json::JsonValue) -> Result<card::Trigger, String> {
     fn parse_trigger_string(string : &str) -> Result<card::Trigger, String> {
         match string {
             "activated" => Ok(card::Trigger::Activated),
+            "cast" => Ok(card::Trigger::Cast),
             _ => Err("invalid 'trigger' string".to_string())
         }
     }
@@ -59,11 +63,30 @@ fn parse_trigger(object : &json::JsonValue) -> Result<card::Trigger, String> {
 }
 
 fn parse_effect_mana(object : &json::object::Object) -> Result<card::Effect, String> {
-
     match object["produce"].as_str() {
         Some(string) => Ok(card::Effect::ProduceMana(mana::Pool::parse_cost(string)?)),
         None => Err("invalid 'mana::produce' value".to_string())
     }
+}
+
+fn parse_effect_land_fetch(object : &json::object::Object) -> Result<card::Effect, String> {
+
+    fn parse_string_or_array(value : &json::JsonValue) -> Result<Vec<String>, String> {
+        let mut v : Vec<String> = Vec::new();
+        match &value {
+            json::JsonValue::Null => (),
+            json::JsonValue::Short(txt) => v.push(txt.to_string()),
+            json::JsonValue::String(txt) => v.push(txt.to_string()),
+            json::JsonValue::Array(array) => for i in array { v.push(i.to_string()); },
+            _ => return Err("invalid 'to-hand' or 'to-battlefield' value...".to_string())
+        }
+        return Ok(v);
+    }
+
+    return Ok(card::Effect::FetchLand {
+        to_hand: parse_string_or_array(&object["to-hand"])?,
+        to_battlefield: parse_string_or_array(&object["to-battlefield"])?
+    });
 }
 
 fn parse_effect(object : &json::JsonValue) -> Result<card::Effect, String> {
@@ -71,6 +94,7 @@ fn parse_effect(object : &json::JsonValue) -> Result<card::Effect, String> {
         json::JsonValue::Object(effect_object) => {
             match effect_object["type"].as_str() {
                 Some("mana") => parse_effect_mana(effect_object),
+                Some("land-fetch") => parse_effect_land_fetch(effect_object),
                 _ => Err("invalid 'effect::type' string".to_string())
             }
         },
