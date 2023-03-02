@@ -41,6 +41,7 @@ fn parse_cost(object : &json::JsonValue) -> Result<card::Cost, String> {
     fn parse_cost_string(string : &str) -> Result<card::Cost, String> {
         match string {
             "tap" => Ok(card::Cost::Tap),
+            "tap-sacrifice" => Ok(card::Cost::TapSacrifice),
             "none" => Ok(card::Cost::None),
             _ => Err("invalid 'cost' string!".to_string())
         }
@@ -52,6 +53,7 @@ fn parse_cost(object : &json::JsonValue) -> Result<card::Cost, String> {
         json::JsonValue::Object(cost_object) => {
             match cost_object["type"].as_str() {
                 Some("tap") => Ok(card::Cost::Tap),
+                Some("tap-sacrifice") => Ok(card::Cost::TapSacrifice),
                 Some("none") => Ok(card::Cost::None),
                 Some("tap-mana-sacrifice") => Ok(card::Cost::TapManaSacrifice(parse_mana_pool(cost_object, "mana")?)),
                 _ => Err("invalid 'cost::type' value...".to_string()),

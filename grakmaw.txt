@@ -24,7 +24,8 @@
 1x Evolution Sage (onc) [Proliferate] 
 1x Expand the Sphere (one) [Ramp,Proliferate] 
 1x Far Wanderings (znc) [Ramp] 
-11x Forest (j22) 110
+10x Forest (j22) 110
+1x Evolving Wilds
 1x Foul Orchard (khc)
 1x Garruk's Uprising (scd) [Draw] 
 1x Ghoulish Procession (mid) [Support] 
@@ -67,7 +68,8 @@
 1x Slurrk, All-Ingesting (cmr) [Counters] 
 1x Sol Ring (onc) [Ramp] 
 1x Supernatural Stamina (2x2) [GrakBack] 
-10x Swamp (j22) 106
+9x Swamp (j22) 106
+1x Terramorphic Expanse
 1x Temple of Malady (onc)
 1x Temple of the False God (onc)
 1x The Hunter Maze (one)

@@ -243,6 +243,20 @@ impl Pool {
         return Ok(mana_cost);
     }
 
+    pub fn can_also_pay_for(&self, already_spent: &Pool, additional_cost: &Pool) -> Option<Pool> {
+        let total_cmc = already_spent.converted_mana_cost()
+            + additional_cost.converted_mana_cost();
+        if total_cmc > self.converted_mana_cost() {
+            return None;
+        }
+
+        let total = already_spent.expanded(additional_cost);
+        if self.can_pay_for(&total) {
+            return Some(total);
+        }
+        return None;
+    }
+
     pub fn can_pay_for(&self, other : &Pool) -> bool {
         if other.converted_mana_cost() > self.converted_mana_cost() {
             return false;

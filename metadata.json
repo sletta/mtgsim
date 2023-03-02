@@ -33,6 +33,7 @@
         "effect": { "type": "land-fetch", "to-battlefield": [ "basic land", "basic land" ] }
     } ] },
 {   "name": "Bonders' Enclave",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
+{   "name": "Evolving Wilds",               "cost": "tap-sacrifice", "trigger": "activated", "effect": { "type": "land-fetch", "to-battlefield": "basic land" } },
 {   "name": "Guildless Commons",            "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
 {   "name": "High Market",                  "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
 {   "name": "Karn's Bastion",               "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
@@ -46,6 +47,7 @@
         "effect": { "type": "land-fetch", "to-battlefield": [ "basic land", "basic land" ] }
     } ] },
 {   "name": "Temple of the False God",      "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
+{   "name": "Terramorphic Expanse",         "cost": "tap-sacrifice", "trigger": "activated", "effect": { "type": "land-fetch", "to-battlefield": "basic land" } },
 {   "name": "War Room",                     "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
 
 

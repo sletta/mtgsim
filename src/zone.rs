@@ -80,6 +80,10 @@ impl<'db> Zone<'db> {
         self.cards.sort_by(|a, b| a.data.name.cmp(&b.data.name));
     }
 
+    pub fn sort_by_cmc(&mut self) {
+        self.cards.sort_by(|a, b| a.data.cmc.cmp(&b.data.cmc));
+    }
+
     pub fn query(&self, card_type: Types) -> Vec<Card<'db>> {
         return self.cards.iter().filter_map(|c| match c.is_type(card_type) {
             true => Some(c.clone()),

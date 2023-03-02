@@ -117,6 +117,8 @@ impl<'db> Game<'db> {
         assert_eq!(self.battlefield.size(), 0);
         assert_eq!(self.graveyard.size(), 0);
 
+        self.command.sort_by_cmc();
+
         let id = self.command.assign_ids(1);
         self.library.assign_ids(id);
 
@@ -173,6 +175,7 @@ impl<'db, 'game> Turn<'db, 'game> {
         }
 
         while self.try_to_play_land()
+            || self.try_to_play_commander()
             || self.try_to_ramp() {
             continue;
         }
@@ -195,6 +198,28 @@ impl<'db, 'game> Turn<'db, 'game> {
             if add_permanents_mana_production_to_pool(&abilities, &mut self.mana_pool) {
                 self.cards_in_mana_pool.insert(card.id);
             }
+        }
+    }
+
+    pub fn try_to_play_commander(&mut self) -> bool {
+        if self.game.command.size() == 0 {
+            return false;
+        }
+        let commander = &self.game.command.cards[0];
+        let commander_cost = commander.data.mana_cost.as_ref().expect("commander has no mana cost!!!");
+        match self.mana_pool.can_also_pay_for(&self.mana_spent, &commander_cost) {
+            Some(spent) => {
+                if self.game.verbose {
+                    println!(" - playing commander, {}", commander);
+                }
+                self.game.game_stats.turn_commander_played = self.turn_number;
+                self.turn_stats.cards_played += 1;
+                self.mana_spent = spent;
+                let card = self.game.command.take(commander.id).expect("commander wasn't there!!!");
+                self.game.battlefield.add(card);
+                return true;
+            },
+            None => return false
         }
     }
 
@@ -229,7 +254,7 @@ impl<'db, 'game> Turn<'db, 'game> {
             };
 
             if self.game.verbose && wanted_color.len() > 0 {
-                println!(" --- land preference: {:?}", wanted_color[0]);
+                println!(" - land preference: {:?}", wanted_color[0]);
             }
 
             for color in wanted_color {
@@ -246,7 +271,7 @@ impl<'db, 'game> Turn<'db, 'game> {
         }
 
         if self.game.verbose {
-            println!(" --- no match for preference...");
+            println!(" - no match for preference...");
         }
         self.play_card(lands_in_hand[0].id);
         return true;
@@ -272,7 +297,7 @@ impl<'db, 'game> Turn<'db, 'game> {
             return self.mana_pool.can_pay_for(&total_mana_this_turn);
         }
 
-        return false
+        return true;
     }
 
     pub fn try_to_ramp(&mut self) -> bool {
@@ -286,7 +311,7 @@ impl<'db, 'game> Turn<'db, 'game> {
                             continue;
                         }
                         if self.game.verbose {
-                            println!(" --- ramp candidate (activated): {}", card);
+                            println!(" - ramping (activated ability): {}", card);
                         }
 
                         if self.cards_in_mana_pool.contains(&card.id) {
@@ -294,21 +319,18 @@ impl<'db, 'game> Turn<'db, 'game> {
                             if let Some(production) = card.produced_mana() {
                                 self.mana_pool.remove(&production);
                                 if self.game.verbose {
-                                    println!(" --- removing {} from mana pool", production);
+                                    println!(" - removing {} from mana pool", production);
                                 }
                             }
                         }
 
-                        // registering mana spent..
-                        match &ability.cost {
-                            Cost::Mana(pool) => self.mana_spent.add(pool),
-                            Cost::TapMana(pool) => self.mana_spent.add(pool),
-                            Cost::TapManaSacrifice(pool) => self.mana_spent.add(pool),
-                            _ => ()
+                        if let Some(mana_cost) = ability.cost.is_mana() {
+                            // registering mana spent..
+                            self.mana_spent.add(mana_cost);
                         }
 
                         if ability.cost.is_sacrifice() {
-                            println!(" --- sac'ing...");
+                            println!(" - sac'ing {}", card);
                             let tmp_card = self.game.battlefield.take(card.id);
                             self.game.graveyard.add(tmp_card.expect("card missing!!!"));
                         }
@@ -329,7 +351,7 @@ impl<'db, 'game> Turn<'db, 'game> {
                 continue;
             }
             if self.game.verbose {
-                println!(" --- ramp candidate (cast): {}", card);
+                println!(" - ramp candidate (cast): {}", card);
             }
             candidates.push(card.clone());
         }
@@ -349,7 +371,7 @@ impl<'db, 'game> Turn<'db, 'game> {
             card.tapped = true;
         }
         if self.game.verbose {
-            println!(" #-> playing: {}", card);
+            println!(" - playing: {}", card);
         }
 
         if card.is_type(Types::Land) {
@@ -372,7 +394,7 @@ impl<'db, 'game> Turn<'db, 'game> {
                         && ability.cost == Cost::Tap
                         && ability.trigger == Trigger::Activated {
                         if self.game.verbose {
-                            println!(" #--> permanent's mana ability added to pool...");
+                            println!(" - permanent's mana ability added to pool...");
                         }
                        self.mana_pool.add(mana);
                        self.cards_in_mana_pool.insert(card.id);
@@ -390,12 +412,12 @@ impl<'db, 'game> Turn<'db, 'game> {
 
         if permanent {
             if self.game.verbose {
-                println!(" #--> {} is now on battlefield", card);
+                println!(" - {} ---> battlefield", card);
             }
             self.game.battlefield.add(card);
         } else {
             if self.game.verbose {
-                println!(" #--> {} is now on in graveyard", card);
+                println!(" - {} ---> graveyard", card);
             }
             self.game.graveyard.add(card);
         }
@@ -411,7 +433,7 @@ impl<'db, 'game> Turn<'db, 'game> {
 
         if !self.mana_pool.can_pay_for(&total_cost) {
             if self.game.verbose {
-                println!(" ---> cannot afford to play {}, total-cost={}, available={}", card, total_cost, self.mana_pool);
+                println!(" - cannot afford to play {}, total-cost={}, available={}", card, total_cost, self.mana_pool);
             }
             return false;
         }
