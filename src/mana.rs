@@ -177,6 +177,27 @@ impl Pool {
         return self.sequence.iter().filter(|m| m.colors == color.colors).count() as u32;
     }
 
+    pub fn expanded(&self, other : &Pool) -> Pool {
+        let mut pool = self.clone();
+        pool.add(other);
+        return pool;
+    }
+
+    pub fn remove(&mut self, other: &Pool) {
+        for mana_to_remove in &other.sequence {
+            let mut i = 0;
+            let mut found: bool = false;
+            while !found && i < self.sequence.len() {
+                if self.sequence[i].colors == mana_to_remove.colors {
+                    self.sequence.remove(i);
+                    found = true;
+                }
+                i += 1;
+            }
+            assert!(found);
+        }
+    }
+
     pub fn union_of_all_colors(&self) -> Mana {
         let mut mana = Mana::new();
         for m in self.sequence.iter() {

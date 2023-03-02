@@ -124,10 +124,11 @@ pub enum Trigger {
 pub enum Cost {
     None,
     Tap,
-    Mana(Pool),
     Sacrifice,
+    Mana(Pool),
+    TapSacrifice,
     TapMana(Pool),
-    TapManaSacrifice(Pool)
+    TapManaSacrifice(Pool),
 }
 
 #[derive(Debug)]
@@ -225,6 +226,16 @@ impl<'db> Card<'db> {
             None => (),
         }
         return false;
+    }
+
+    pub fn produced_mana(&self) -> Option<Pool> {
+        for ability in self.data.abilities.iter().flatten() {
+            match &ability.effect {
+                Effect::ProduceMana(mana) => return Some(mana.clone()),
+                _ => ()
+            }
+        }
+        return None;
     }
 }
 
@@ -380,6 +391,37 @@ impl CardData {
             abilities: None
         };
     }
+}
+
+
+impl Cost {
+    pub fn is_tap(&self) -> bool {
+        match self {
+            Cost::Tap => true,
+            Cost::TapMana(_) => true,
+            Cost::TapManaSacrifice(_) => true,
+            _ => false
+        }
+    }
+
+    pub fn is_mana(&self) -> Option<&Pool> {
+        match self {
+            Cost::Mana(pool) => Some(pool),
+            Cost::TapMana(pool) => Some(pool),
+            Cost::TapManaSacrifice(pool) => Some(pool),
+            _ => None
+        }
+    }
+
+    pub fn is_sacrifice(&self) -> bool {
+        match self {
+            Cost::Sacrifice => true,
+            Cost::TapSacrifice => true,
+            Cost::TapManaSacrifice(_) => true,
+            _ => false
+        }
+    }
+
 }
 
 #[cfg(test)]

@@ -31,6 +31,10 @@ impl<'db> Zone<'db> {
         self.cards.clear();
     }
 
+    pub fn contains(&self, card: &Card<'db>) -> bool {
+        return self.cards.iter().find(|c| c.id == card.id).is_some();
+    }
+
     pub fn assign_ids(&mut self, first_id : u32) -> u32 {
         let mut id = first_id;
         for card in self.cards.iter_mut() {

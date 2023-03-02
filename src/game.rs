@@ -36,6 +36,7 @@ struct Turn<'db, 'game> {
     mana_pool : Pool,
     mana_spent : Pool,
     turn_stats : TurnStats,
+    cards_in_mana_pool: std::collections::HashSet<u32>
 }
 
 #[derive(Debug, Clone)]
@@ -82,15 +83,6 @@ impl<'db> Game<'db> {
                 println!(" - draw card: {}", card);
             }
             self.hand.add(card);
-        }
-    }
-
-    pub fn gather_mana_pool(&self, pool : &mut Pool) {
-        for (card, abilities) in self.battlefield.cards.iter().filter_map(|c| Some((c, c.data.abilities.as_ref()?))) {
-            if card.tapped {
-                continue;
-            }
-            add_permanents_mana_production_to_pool(&abilities, pool);
         }
     }
 
@@ -158,13 +150,14 @@ impl<'db, 'game> Turn<'db, 'game> {
                 turn_number: turn,
                 lands_played: 0,
                 cards_played: 0,
-            }
+            },
+            cards_in_mana_pool: std::collections::HashSet::new()
         }
     }
 
     pub fn play(&mut self, settings: &Settings) {
         self.game.battlefield.untap_all();
-        self.game.gather_mana_pool(&mut self.mana_pool);
+        self.gather_mana_pool();
 
         if self.game.verbose {
             println!("\n***** Turn #{} *****", self.turn_number);
@@ -185,11 +178,23 @@ impl<'db, 'game> Turn<'db, 'game> {
         }
 
         if self.game.verbose {
+            println!(" - nothing more to do...");
             println!(" - available mana: {} ({})", self.mana_pool, self.mana_pool.converted_mana_cost());
             println!(" - spent mana: {} ({})", self.mana_spent, self.mana_spent.converted_mana_cost());
             self.game.hand.dump();
             self.game.battlefield.sort();
             self.game.battlefield.dump();
+        }
+    }
+
+    pub fn gather_mana_pool(&mut self) {
+        for (card, abilities) in self.game.battlefield.cards.iter().filter_map(|c| Some((c, c.data.abilities.as_ref()?))) {
+            if card.tapped {
+                continue;
+            }
+            if add_permanents_mana_production_to_pool(&abilities, &mut self.mana_pool) {
+                self.cards_in_mana_pool.insert(card.id);
+            }
         }
     }
 
@@ -247,13 +252,74 @@ impl<'db, 'game> Turn<'db, 'game> {
         return true;
     }
 
-    pub fn try_to_ramp(&mut self) -> bool {
+    pub fn can_satisfy_cost(&self, card: &Card<'db>, cost: &Cost) -> bool {
 
-        if self.game.verbose {
-            println!(" - trying to ramp...");
+        if cost.is_tap() && card.tapped {
+            return false;
         }
 
-        // TODO: Activate from battle field
+        if cost.is_sacrifice() && !self.game.battlefield.contains(card) {
+            return false;
+        }
+
+        if let Some(pool) = cost.is_mana() {
+            let mut total_mana_this_turn = self.mana_spent.expanded(&pool);
+            if  self.cards_in_mana_pool.contains(&card.id) {
+                if let Some(produced) = card.produced_mana() {
+                    total_mana_this_turn.add(&produced);
+                }
+            }
+            return self.mana_pool.can_pay_for(&total_mana_this_turn);
+        }
+
+        return false
+    }
+
+    pub fn try_to_ramp(&mut self) -> bool {
+
+        for card in self.game.battlefield.cards.iter() {
+            for ability in card.data.abilities.iter().flatten() {
+                match &ability.effect {
+                    Effect::FetchLand{to_hand: types_to_hand, to_battlefield: types_to_battlefield} => {
+                        if ability.trigger != Trigger::Activated
+                            || !self.can_satisfy_cost(card, &ability.cost) {
+                            continue;
+                        }
+                        if self.game.verbose {
+                            println!(" --- ramp candidate (activated): {}", card);
+                        }
+
+                        if self.cards_in_mana_pool.contains(&card.id) {
+                            self.cards_in_mana_pool.remove(&card.id);
+                            if let Some(production) = card.produced_mana() {
+                                self.mana_pool.remove(&production);
+                                if self.game.verbose {
+                                    println!(" --- removing {} from mana pool", production);
+                                }
+                            }
+                        }
+
+                        // registering mana spent..
+                        match &ability.cost {
+                            Cost::Mana(pool) => self.mana_spent.add(pool),
+                            Cost::TapMana(pool) => self.mana_spent.add(pool),
+                            Cost::TapManaSacrifice(pool) => self.mana_spent.add(pool),
+                            _ => ()
+                        }
+
+                        if ability.cost.is_sacrifice() {
+                            println!(" --- sac'ing...");
+                            let tmp_card = self.game.battlefield.take(card.id);
+                            self.game.graveyard.add(tmp_card.expect("card missing!!!"));
+                        }
+
+                        fetch_lands(&mut self.game, types_to_hand, types_to_battlefield);
+                        return true;
+                    },
+                    _ => ()
+                }
+            }
+        }
 
         let mut candidates : Vec<Card> = Vec::new();
         for card in self.game.hand.cards.iter() {
@@ -262,11 +328,10 @@ impl<'db, 'game> Turn<'db, 'game> {
                 || self.mana_spent.converted_mana_cost() + card.data.cmc > self.mana_pool.converted_mana_cost() {
                 continue;
             }
-
-            candidates.push(card.clone());
             if self.game.verbose {
-                println!(" --- ramp candidate: {}", card);
+                println!(" --- ramp candidate (cast): {}", card);
             }
+            candidates.push(card.clone());
         }
 
         for card in candidates {
@@ -310,26 +375,12 @@ impl<'db, 'game> Turn<'db, 'game> {
                             println!(" #--> permanent's mana ability added to pool...");
                         }
                        self.mana_pool.add(mana);
+                       self.cards_in_mana_pool.insert(card.id);
                     }
                 },
-                Effect::FetchLand{to_hand: types_to_hand, to_battlefield: types_to_bf} => {
-                    if ability.trigger == Trigger::Cast
-                        && ability.cost == Cost::None {
-                        for type_to_hand in types_to_hand {
-                            let card = self.game.library.take_land(type_to_hand).expect("land going to hand not found in library!!");
-                            if self.game.verbose {
-                                println!(" #--> fetch {} to hand", card);
-                            }
-                            self.game.hand.add(card);
-                        }
-                        for type_to_bf in types_to_bf {
-                            let mut card = self.game.library.take_land(type_to_bf).expect("land going to battlefield not found in library!!");
-                            card.tapped = true;
-                            if self.game.verbose {
-                                println!(" #--> fetch {} to battlefield", card);
-                            }
-                            self.game.battlefield.add(card);
-                        }
+                Effect::FetchLand{to_hand: types_to_hand, to_battlefield: types_to_battlefield} => {
+                    if ability.trigger == Trigger::Cast && ability.cost == Cost::None {
+                        fetch_lands(&mut self.game, types_to_hand, types_to_battlefield);
                     }
                 },
                 _ => (),
@@ -386,16 +437,39 @@ fn sort_cards_on_colors_produced(cards : &mut Vec<Card>) {
     });
 }
 
-fn add_permanents_mana_production_to_pool(abilities : &Vec<Ability>, pool : &mut Pool)
-{
+fn add_permanents_mana_production_to_pool(abilities : &Vec<Ability>, pool : &mut Pool) -> bool {
+    let mut added = false;
     for ability in abilities.iter() {
         match &ability.trigger { Trigger::Activated => (), _ => continue }
         match &ability.cost { Cost::Tap => (), _ => continue }
         match &ability.effect {
-            Effect::ProduceMana(produced_mana) => pool.add(produced_mana),
+            Effect::ProduceMana(produced_mana) => {
+                pool.add(produced_mana);
+                added = true;
+            },
             _ => continue
         }
     }
+    return added;
+}
+
+fn fetch_lands(game: &mut Game, types_to_hand: &Vec<String>, types_to_battlefield: &Vec<String>) {
+    for type_to_hand in types_to_hand {
+        let card = game.library.take_land(type_to_hand).expect("land going to hand not found in library!!");
+        if game.verbose {
+            println!(" #--> fetch {} to hand", card);
+        }
+        game.hand.add(card);
+    }
+    for type_to_battlefield in types_to_battlefield {
+        let mut card = game.library.take_land(type_to_battlefield).expect("land going to battlefield not found in library!!");
+        card.tapped = true;
+        if game.verbose {
+            println!(" #--> fetch {} to battlefield", card);
+        }
+        game.battlefield.add(card);
+    }
+    game.library.shuffle();
 }
 
 #[cfg(test)]
@@ -404,7 +478,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_game_gather_mana_pool() {
+    fn test_turn_gather_mana_pool() {
         let sol_ring_data = CardData::make_sol_ring_data();
         let swamp_data = CardData::make_swamp_data();
         let command_tower_data = CardData::make_command_tower_data();
@@ -418,11 +492,11 @@ mod tests {
         game.battlefield.add(Card::new_with_id(4, &commanders_sphere_data));
         game.battlefield.add(Card::new_with_id(5, &elk_data));
 
-        let mut pool = Pool::new();
-        game.gather_mana_pool(&mut pool);
-        assert_eq!(pool.count(&COLORLESS), 2);
-        assert_eq!(pool.count(&ALL), 2);
-        assert_eq!(pool.count(&BLACK), 1);
+        let mut turn = Turn::new(&mut game, 42);
+        turn.gather_mana_pool();
+        assert_eq!(turn.mana_pool.count(&COLORLESS), 2);
+        assert_eq!(turn.mana_pool.count(&ALL), 2);
+        assert_eq!(turn.mana_pool.count(&BLACK), 1);
     }
 
     #[test]
