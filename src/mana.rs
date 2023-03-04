@@ -3,7 +3,7 @@ use itertools::Itertools;
 
 use enumflags2::{bitflags, BitFlags};
 
-// use std::time::{Duration, Instant};
+use std::time::{Duration, Instant};
 
 #[bitflags]
 #[repr(u8)]
@@ -79,6 +79,15 @@ impl std::fmt::Display for Mana {
     }
 }
 
+// impl Iterator for Mana {
+
+//     type Item = Color;
+
+//     fn next(&mut self) -> Option<Self::Item> {
+//         return
+//     }
+// }
+
 impl std::fmt::Display for Pool {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if self.sequence.len() == 0 {
@@ -109,6 +118,11 @@ impl Mana {
     #[allow(dead_code)]
     pub fn make_dual(a : Color, b : Color) -> Self {
         return Mana { colors: a | b };
+    }
+
+    #[cfg(test)]
+    pub fn make_triple(a: Color, b: Color, c: Color) -> Self {
+        return Mana { colors: a | b | c };
     }
 
     pub fn set_from_string(&mut self, value : &str) {
@@ -288,6 +302,15 @@ impl Pool {
             }
         }
 
+        // early out.. if a color in the cost is not in the source, permuting
+        // is pointless..
+        for in_cost in cost.iter() {
+            if source.iter().any(|m| m.can_pay_for(&in_cost)) {
+                continue;
+            }
+            return false;
+        }
+
         // Generate all permutations of the mana sources. If compatible, we'll
         // then eventually land on a permutation of mana sources that can pay
         // for the specificed cost.
@@ -308,6 +331,283 @@ impl Pool {
 
         return false;
     }
+}
+
+#[derive(Debug, Clone)]
+struct ManaPool {
+    pub black: u32,
+    pub blue: u32,
+    pub green: u32,
+    pub red: u32,
+    pub white: u32,
+    pub colorless: u32,
+    pub all: u32,
+    pub multi: Option<Vec<Mana>> // make this optional
+}
+
+impl ManaPool {
+    pub fn new() -> Self {
+        return ManaPool {
+            black: 0,
+            blue: 0,
+            green: 0,
+            red: 0,
+            white: 0,
+            colorless: 0,
+            all: 0,
+            multi: None
+        }
+    }
+
+    pub fn new_from_sequence(s: &Vec<Mana>) -> Self {
+        let mut pool = ManaPool::new();
+        s.iter().for_each(|m| pool.add_mana(m));
+        return pool;
+    }
+
+    pub fn new_from_string(cost : &str) -> Result<Self, String> {
+        let re = regex::Regex::new(r"([0-9BCGRUW/]+)").expect("failed to crate manacost reggexp");
+        let mut pool = ManaPool::new();
+        for cap in re.find_iter(cost) {
+            let value = cap.as_str();
+            if value.contains("/") {
+                let mut mana = Mana::new();
+                for i in value.split('/') {
+                    mana.set_from_string(i);
+                }
+                pool.add_mana(&mana);
+                continue;
+            }
+            match value {
+                "C" => pool.add_mana(&COLORLESS),
+                "B" => pool.add_mana(&BLACK),
+                "U" => pool.add_mana(&BLUE),
+                "G" => pool.add_mana(&GREEN),
+                "R" => pool.add_mana(&RED),
+                "W" => pool.add_mana(&WHITE),
+                _ => {
+                    let count = value.parse::<u32>().unwrap_or_else(|e| panic!("failed to parse mana value! error={:?}, value='{:?}'", e, value));
+                    for _i in 0..count {
+                        pool.add_mana(&COLORLESS);
+                    }
+                }
+            }
+        }
+
+        if pool.cmc() == 0 {
+            return Err(format!("invalid mana cost... {:?}", cost));
+        }
+
+        return Ok(pool);
+    }
+
+
+    pub fn add_mana(&mut self, m: &Mana) {
+        if m.is_colorless() {
+            self.colorless += 1;
+        } else if m.is_monocolor() {
+            if *m == BLACK {
+                self.black += 1;
+            } else if *m == BLUE {
+                self.blue += 1;
+            } else if *m == GREEN {
+                self.green += 1;
+            } else if *m == RED {
+                self.red += 1;
+            } else if *m == WHITE {
+                self.white += 1;
+            }
+        } else if *m == ALL {
+            self.all += 1;
+        } else {
+            self.multi.get_or_insert(Vec::new()).push(m.clone());
+        }
+    }
+
+    pub fn add_color(&mut self, color: &Color) {
+        match color {
+            Color::Black => self.black += 1,
+            Color::Blue => self.blue += 1,
+            Color::Green => self.green += 1,
+            Color::Red => self.red += 1,
+            Color::White => self.white+= 1,
+        }
+    }
+
+    pub fn add_pool(&mut self, pool: &ManaPool) {
+        self.black += pool.black;
+        self.blue += pool.blue;
+        self.green += pool.green;
+        self.red += pool.red;
+        self.white += pool.white;
+        self.colorless += pool.colorless;
+        self.all += pool.all;
+        pool.multi
+            .iter()
+            .flatten()
+            .for_each(|m| self.multi.get_or_insert(Vec::new()).push(m.clone()));
+    }
+
+    pub fn remove_exact_pool(&mut self, other: &ManaPool) {
+        assert!(self.black >= other.black);
+        assert!(self.blue >= other.blue);
+        assert!(self.green >= other.green);
+        assert!(self.red >= other.red);
+        assert!(self.white >= other.white);
+        assert!(self.colorless >= other.colorless);
+        assert!(self.all >= other.all);
+
+        self.black -= other.black;
+        self.blue -= other.blue;
+        self.green -= other.green;
+        self.red -= other.red;
+        self.white -= other.white;
+        self.colorless -= other.colorless;
+        self.all -= other.all;
+
+        for mana_to_remove in other.multi.iter().flatten() {
+            assert!(self.multi.is_some());
+            let mut found = false;
+            let self_multi : Vec<Mana> = self.multi.as_ref().into_iter().flatten().filter_map(|m| {
+                if !found && mana_to_remove.colors == m.colors {
+                    println!(" -- removing {:?} from {:?}", mana_to_remove, m);
+                    found = true;
+                    return None;
+                }
+                return Some(m.clone());
+            }).collect();
+            assert!(found);
+            if !self_multi.is_empty() {
+                self.multi = Some(self_multi);
+            } else {
+                self.multi = None;
+            }
+        }
+    }
+
+    /// Returns the converted mana cost.
+    pub fn cmc(&self) -> u32 {
+        return self.black
+            + self.blue
+            + self.green
+            + self.red
+            + self.white
+            + self.colorless
+            + self.all
+            + match &self.multi {
+                Some(vector) => vector.len() as u32,
+                None => 0
+            };
+    }
+
+    pub fn expanded(&self, other : &ManaPool) -> ManaPool {
+        let mut pool = self.clone();
+        pool.add_pool(other);
+        return pool;
+    }
+
+    fn simple_clone(&self) -> Self {
+        return ManaPool {
+            black: self.black,
+            blue: self.blue,
+            green: self.green,
+            red: self.red,
+            white: self.white,
+            colorless: self.colorless,
+            all: self.all,
+            multi: None
+        };
+    }
+
+    pub fn can_also_pay_for(&self, already_spent: &ManaPool, additional_cost: &ManaPool) -> Option<ManaPool> {
+        let total_cmc = already_spent.cmc() + additional_cost.cmc();
+        if total_cmc > self.cmc() {
+            return None;
+        }
+
+        let total = already_spent.expanded(additional_cost);
+        if self.can_pay_for(&total) {
+            return Some(total);
+        }
+        return None;
+    }
+
+    pub fn can_pay_for(&self, cost: &ManaPool) -> bool {
+        if self.cmc() < cost.cmc() {
+            println!(" - mana cost is too high...");
+            return false;
+        }
+
+        let mut price = cost.clone();
+
+        // costs that can be payed with any color can be considered colorless
+        // for the purpose of this calculation..
+        price.colorless += price.all;
+        price.all = 0;
+
+        if self.multi.is_some() && price.multi.is_some() {
+            panic!("needs implementing...");
+            // return false;
+        } else if let Some(self_multi) = &self.multi {
+            for colors in self_multi.iter().map(|mana| mana.colors.iter().collect::<Vec<Color>>()).multi_cartesian_product() {
+                let mut me = self.simple_clone();
+                colors.iter().for_each(|color| me.add_color(&color));
+                if Self::check_simple_pools(me, price.simple_clone()) {
+                    return true;
+                }
+            }
+            return false;
+        } else if let Some(price_multi) = &price.multi {
+            for colors in price_multi.iter().map(|mana| mana.colors.iter().collect::<Vec<Color>>()).multi_cartesian_product() {
+                let mut other = price.simple_clone();
+                colors.iter().for_each(|color| other.add_color(&color));
+                if Self::check_simple_pools(self.simple_clone(), other) {
+                    return true;
+                }
+            }
+            return false;
+        } else {
+            return Self::check_simple_pools(self.simple_clone(), price);
+        }
+    }
+
+    fn check_simple_pools(mut pool: ManaPool, mut price: ManaPool) -> bool {
+
+        fn pay(pool_color: &mut u32, cost_color: &mut u32) {
+            if *pool_color >= *cost_color {
+                *pool_color -= *cost_color;
+                *cost_color = 0;
+            } else {
+                *cost_color -= *pool_color;
+                *pool_color = 0;
+            }
+        }
+
+        assert!(price.all == 0);
+        assert!(pool.multi.is_none());
+        assert!(price.multi.is_none());
+        pay(&mut pool.black, &mut price.black);
+        pay(&mut pool.blue, &mut price.blue);
+        pay(&mut pool.green, &mut price.green);
+        pay(&mut pool.red, &mut price.red);
+        pay(&mut pool.white, &mut price.white);
+        pay(&mut pool.colorless, &mut price.colorless);
+
+        let monocolors_left_to_pay = price.black + price.blue + price.green + price.red + price.white;
+        if monocolors_left_to_pay == 0 {
+            // println!(" - no colors left to pay, checking colorless cost={} vs pool={}", price.colorless, pool.cmc());
+            assert_eq!(price.cmc(), price.colorless);
+            return pool.cmc() >= price.colorless;
+        }
+        if monocolors_left_to_pay <= pool.all {
+            // println!(" - {} mono colored can be paid with {} any color", monocolors_left_to_pay, pool.all);
+            return true;
+        }
+
+        // println!(" - {} mono colors left to play, only {} any available", monocolors_left_to_pay, pool.all);
+        return false;
+    }
+
 }
 
 macro_rules! make_pool {
@@ -473,5 +773,112 @@ mod tests {
         assert_eq!(one_of_each_color.sequence[2], GREEN);
         assert_eq!(one_of_each_color.sequence[3], RED);
         assert_eq!(one_of_each_color.sequence[4], WHITE);
+    }
+
+    #[test]
+    fn test_manapool_can_pay_for() {
+        let one_of_each_color = ManaPool::new_from_sequence(&vec![BLACK, BLUE, GREEN, RED, WHITE]);
+        let green_plus_2 = ManaPool::new_from_sequence(&vec![COLORLESS, COLORLESS, GREEN]);
+        let black_plus_1 = ManaPool::new_from_sequence(&vec![COLORLESS, BLACK]);
+        let red_white_and_2 = ManaPool::new_from_sequence(&vec![COLORLESS, COLORLESS, RED, WHITE]);
+        let colorless_times_5 = ManaPool::new_from_sequence(&vec![COLORLESS, COLORLESS, COLORLESS, COLORLESS, COLORLESS]);
+        let any_x_2_plus_3 = ManaPool::new_from_sequence(&vec![ALL, ALL, COLORLESS, COLORLESS, COLORLESS]);
+
+        assert!(one_of_each_color.can_pay_for(&green_plus_2));
+        assert!(one_of_each_color.can_pay_for(&one_of_each_color));
+        assert!(one_of_each_color.can_pay_for(&black_plus_1));
+        assert!(one_of_each_color.can_pay_for(&red_white_and_2));
+        assert!(one_of_each_color.can_pay_for(&colorless_times_5));
+
+        assert!(!one_of_each_color.can_pay_for(&ManaPool::new_from_sequence(&vec![BLACK, BLACK])));
+        assert!(!one_of_each_color.can_pay_for(&ManaPool::new_from_sequence(&vec![BLUE, BLUE])));
+        assert!(!one_of_each_color.can_pay_for(&ManaPool::new_from_sequence(&vec![GREEN, GREEN])));
+        assert!(!one_of_each_color.can_pay_for(&ManaPool::new_from_sequence(&vec![RED, RED])));
+        assert!(!one_of_each_color.can_pay_for(&ManaPool::new_from_sequence(&vec![WHITE, WHITE])));
+
+        assert!(any_x_2_plus_3.can_pay_for(&ManaPool::new_from_sequence(&vec![BLACK, BLACK])));
+        assert!(any_x_2_plus_3.can_pay_for(&ManaPool::new_from_sequence(&vec![BLUE, BLUE])));
+        assert!(any_x_2_plus_3.can_pay_for(&ManaPool::new_from_sequence(&vec![GREEN, GREEN])));
+        assert!(any_x_2_plus_3.can_pay_for(&ManaPool::new_from_sequence(&vec![RED, RED])));
+        assert!(any_x_2_plus_3.can_pay_for(&ManaPool::new_from_sequence(&vec![WHITE, WHITE])));
+
+        let rakdos = ManaPool::new_from_sequence(&vec![Mana::make_dual(Color::Red, Color::Black)]);
+        assert!(rakdos.can_pay_for(&ManaPool::new_from_sequence(&vec![BLACK])));
+        assert!(!rakdos.can_pay_for(&ManaPool::new_from_sequence(&vec![BLUE])));
+        assert!(!rakdos.can_pay_for(&ManaPool::new_from_sequence(&vec![GREEN])));
+        assert!(rakdos.can_pay_for(&ManaPool::new_from_sequence(&vec![RED])));
+        assert!(!rakdos.can_pay_for(&ManaPool::new_from_sequence(&vec![WHITE])));
+    }
+
+    #[test]
+    fn test_manapool_remove_exact_pool() {
+        let mut rakdos = ManaPool::new_from_sequence(&vec![Mana::make_dual(Color::Red, Color::Black)]);
+        rakdos.remove_exact_pool(&rakdos.clone());
+        assert!(rakdos.multi.is_none());
+        assert_eq!(rakdos.cmc(), 0);
+
+        let mut a_bit_of_each = ManaPool::new_from_sequence(&vec![BLACK, BLUE, GREEN, RED, WHITE, ALL, COLORLESS, COLORLESS]);
+        a_bit_of_each.remove_exact_pool(&a_bit_of_each.clone());
+        assert_eq!(a_bit_of_each.cmc(), 0);
+    }
+
+    #[test]
+    fn test_manapool_perf() {
+        let now = Instant::now();
+        let pool = ManaPool::new_from_sequence(&vec![
+            Mana::make_triple(Color::Black, Color::Blue, Color::Green),
+            Mana::make_triple(Color::Black, Color::Blue, Color::Red),
+            Mana::make_triple(Color::Black, Color::Blue, Color::White),
+            Mana::make_triple(Color::Black, Color::Green, Color::Red),
+            Mana::make_triple(Color::Black, Color::Green, Color::White),
+            Mana::make_triple(Color::Black, Color::Red, Color::White),
+            Mana::make_triple(Color::Blue, Color::Green, Color::Red),
+            Mana::make_triple(Color::Blue, Color::Green, Color::White),
+            Mana::make_triple(Color::Blue, Color::Red, Color::White),
+            Mana::make_triple(Color::Green, Color::Red, Color::White)
+        ]);
+        let ur_dragon_cost = ManaPool::new_from_sequence(&vec![
+            COLORLESS, COLORLESS, COLORLESS, COLORLESS,
+            BLACK, BLUE, GREEN, RED, WHITE
+        ]);
+        assert!(pool.can_pay_for(&ur_dragon_cost));
+        let elapsed = now.elapsed();
+        println!("Elapsed (manapool): {:.2?}", elapsed);
+    }
+
+    #[test]
+    fn test_manapool_new_from_string() {
+        let pool_2x_all = ManaPool::new_from_string("{B/G/R/U/W}{B/G/R/U/W}").unwrap();
+        assert_eq!(pool_2x_all.all, 2);
+        assert_eq!(pool_2x_all.cmc(), 2);
+        assert_eq!(pool_2x_all.black, 0);
+        assert_eq!(pool_2x_all.blue, 0);
+        assert_eq!(pool_2x_all.green, 0);
+        assert_eq!(pool_2x_all.red, 0);
+        assert_eq!(pool_2x_all.white, 0);
+        assert_eq!(pool_2x_all.colorless, 0);
+        assert!(pool_2x_all.multi.is_none());
+
+        let ur_dragon_cost = ManaPool::new_from_string("{4}{B}{G}{R}{W}{U}").unwrap();
+        assert_eq!(ur_dragon_cost.all, 0);
+        assert_eq!(ur_dragon_cost.cmc(), 9);
+        assert_eq!(ur_dragon_cost.black, 1);
+        assert_eq!(ur_dragon_cost.blue, 1);
+        assert_eq!(ur_dragon_cost.green, 1);
+        assert_eq!(ur_dragon_cost.red, 1);
+        assert_eq!(ur_dragon_cost.white, 1);
+        assert_eq!(ur_dragon_cost.colorless, 4);
+        assert!(ur_dragon_cost.multi.is_none());
+
+        let obzedat_cost = ManaPool::new_from_string("{1}{B}{B}{W}{W}").unwrap();
+        assert_eq!(obzedat_cost.all, 0);
+        assert_eq!(obzedat_cost.cmc(), 5);
+        assert_eq!(obzedat_cost.black, 2);
+        assert_eq!(obzedat_cost.blue, 0);
+        assert_eq!(obzedat_cost.green, 0);
+        assert_eq!(obzedat_cost.red, 0);
+        assert_eq!(obzedat_cost.white, 2);
+        assert_eq!(obzedat_cost.colorless, 1);
+        assert!(obzedat_cost.multi.is_none());
     }
 }

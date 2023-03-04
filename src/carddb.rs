@@ -68,6 +68,7 @@ fn parse_trigger(object : &json::JsonValue) -> Result<card::Trigger, String> {
     fn parse_trigger_string(string : &str) -> Result<card::Trigger, String> {
         match string {
             "activated" => Ok(card::Trigger::Activated),
+            "upkeep" => Ok(card::Trigger::Upkeep),
             "cast" => Ok(card::Trigger::Cast),
             _ => Err("invalid 'trigger' string".to_string())
         }
@@ -112,6 +113,7 @@ fn parse_effect(object : &json::JsonValue) -> Result<card::Effect, String> {
             match effect_object["type"].as_str() {
                 Some("mana") => Ok(card::Effect::ProduceMana(parse_mana_pool(effect_object, "produce")?)),
                 Some("land-fetch") => parse_effect_land_fetch(effect_object),
+                Some("land-limit") => Err("not implemented yet..".to_string()),
                 _ => Err("invalid 'effect::type' string".to_string())
             }
         },

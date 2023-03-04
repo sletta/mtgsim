@@ -1,7 +1,6 @@
 [ 
 
 {   "comment": "Basic Lands:" },
-
 {   "name": "Forest",   "cost": "tap",  "trigger": "activated",     "effect": { "type": "mana", "produce": "{G}" } },
 {   "name": "Island",   "cost": "tap",  "trigger": "activated",     "effect": { "type": "mana", "produce": "{U}" } },
 {   "name": "Mountain", "cost": "tap",  "trigger": "activated",     "effect": { "type": "mana", "produce": "{R}" } },
@@ -11,12 +10,10 @@
 
 
 {   "comment": "Black lands:" },
-
 {   "name": "Castle Locthwain",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B}" } },
 
 
 {   "comment": "Green lands:" },
-
 {   "name": "The Hunter Maze",              "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{G}" } },
 {   "name": "Castle Garenbrig",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{G}" } },
 
@@ -52,25 +49,33 @@
 
 
 {   "comment": "Golgari Lands:" },
-
 {   "name": "Temple of Malady",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G}" } },
 {   "name": "Foul Orchard",                 "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G}" } },
 {   "name": "Jungle Hollow",                "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G}" } },
 
 
 {   "comment": "5-color lands:" },
-
 {   "name": "Opal Palace",                  "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
 {   "name": "Command Tower ",               "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
 
 
-{   "comment": "Ramp" },
+{   "comment": "Ramp (rocks)" },
 {   "name": "Commander's Sphere",           "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
-{   "name": "Cultivate",                    "trigger": "cast", "effect": { "type": "land-fetch", "to-hand": "basic land", "to-battlefield": "basic land" } },
-{   "name": "Far Wanderings",               "trigger": "cast", "effect": { "type": "land-fetch", "to-battlefield": "basic land" } },
+{   "name": "Pyramid of the Pantheon",      "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}{B/G/R/W/U}{B/G/R/W/U}", "availability": 0.25 } },
 {   "name": "Replicating Ring",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
 {   "name": "Sol Ring",                     "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}{C}" } },
+
+
+{   "comment": "Ramp (land fetches)" },
+{   "name": "Cultivate",                    "trigger": "cast", "effect": { "type": "land-fetch", "to-hand": "basic land", "to-battlefield": "basic land" } },
+{   "name": "Far Wanderings",               "trigger": "cast", "effect": { "type": "land-fetch", "to-battlefield": "basic land" } },
 {   "name": "Vastwood Surge",               "trigger": "cast", "effect": { "type": "land-fetch", "to-battlefield": [ "basic land", "basic land" ] } },
+
+
+{   "comment": "Ramp (other)" },
+
+
+{   "comment": "Various" },
 
 
 {   "comment": "Aliases..." },

@@ -44,6 +44,8 @@ pub struct TurnStats {
     pub turn_number: u32,
     pub lands_played: u32,
     pub cards_played: u32,
+    pub mana_available: u32,
+    pub mana_spent: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -152,6 +154,8 @@ impl<'db, 'game> Turn<'db, 'game> {
                 turn_number: turn,
                 lands_played: 0,
                 cards_played: 0,
+                mana_available: 0,
+                mana_spent: 0
             },
             cards_in_mana_pool: std::collections::HashSet::new()
         }
@@ -188,6 +192,9 @@ impl<'db, 'game> Turn<'db, 'game> {
             self.game.battlefield.sort();
             self.game.battlefield.dump();
         }
+
+        self.turn_stats.mana_available = self.mana_pool.converted_mana_cost();
+        self.turn_stats.mana_spent = self.mana_spent.converted_mana_cost();
     }
 
     pub fn gather_mana_pool(&mut self) {
@@ -330,7 +337,9 @@ impl<'db, 'game> Turn<'db, 'game> {
                         }
 
                         if ability.cost.is_sacrifice() {
-                            println!(" - sac'ing {}", card);
+                            if self.game.verbose {
+                                println!(" - sac'ing {}", card);
+                            }
                             let tmp_card = self.game.battlefield.take(card.id);
                             self.game.graveyard.add(tmp_card.expect("card missing!!!"));
                         }
@@ -462,8 +471,16 @@ fn sort_cards_on_colors_produced(cards : &mut Vec<Card>) {
 fn add_permanents_mana_production_to_pool(abilities : &Vec<Ability>, pool : &mut Pool) -> bool {
     let mut added = false;
     for ability in abilities.iter() {
-        match &ability.trigger { Trigger::Activated => (), _ => continue }
-        match &ability.cost { Cost::Tap => (), _ => continue }
+        match &ability.trigger {
+            Trigger::Activated => (),
+            Trigger::Upkeep => (),
+            _ => continue
+        }
+        match &ability.cost {
+            Cost::Tap => (),
+            Cost::None => {},
+             _ => continue
+        }
         match &ability.effect {
             Effect::ProduceMana(produced_mana) => {
                 pool.add(produced_mana);

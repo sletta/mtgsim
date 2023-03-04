@@ -142,8 +142,28 @@ fn main() {
         stats.push(game.game_stats.clone());
     }
 
-    for s in stats {
-        println!("{:?}", s);
-    }
+    show_statistics(&stats, &settings);
+}
 
+fn average(sum: u32, count: usize) -> f32 {
+    return sum as f32 / count as f32;
+}
+
+fn show_statistics(stats: &Vec<game::GameStats>, settings: &game::Settings) {
+    println!("Played {} games of {} turns each:", stats.len(), settings.turn_count);
+
+    let commander_average_turn = average(stats.iter().map(|s| s.turn_commander_played).sum(), stats.len());
+    println!(" - commander arrives on turn: {}", commander_average_turn);
+
+    for round in 0..settings.turn_count {
+        let i : usize = round as usize;
+        let lands_played = average(stats.iter().map(|s| s.turns_stats[i].lands_played).sum(), stats.len());
+        let mana_available = average(stats.iter().map(|s| s.turns_stats[i].mana_available).sum(), stats.len());
+        let mana_spent = average(stats.iter().map(|s| s.turns_stats[i].mana_spent).sum(), stats.len());
+        println!(" - turn #{:2}: lands played: {:.2}; mana spent: {:.2} of total {:.2}",
+                round + 1,
+                lands_played,
+                mana_spent,
+                mana_available);
+    }
 }

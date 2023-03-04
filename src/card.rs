@@ -74,16 +74,6 @@ pub enum Types {
 }
 
 {
-    "name": "Black Market",
-    "trigger": "upkeep",
-    "availability": 0.5
-    "effect": {
-        "type": "mana",
-        "produce": "{B}{B}{B}{B}{B}{B}{B}{B}",
-    }
-},
-
-{
     "name": "Blighted Woodland",
     "abilities": [
         {
@@ -99,16 +89,25 @@ pub enum Types {
 
 
 {   "name": "Expand the Sphere"
-{   "name": "Myriad Landscape"
 {   "name": "Path of Discovery"
 {   "name": "Pyramid of the Pantheon"
 {   "name": "Scale the Heights"
+
+{   "name": "Scale the Heights",
+    "abilities": [
+        { "trigger": "cast", "effect": { "type": "land-limit", "count": 1 } },
+        { "trigger": "cast", "effect": { "type": "draw", "count": 1 } }
+    ]
+},
+
+{   "name": "Black Market",     "trigger": "upkeep",    "availability": 0.25,    "effect": { "type": "mana", "produce": "{B}{B}{B}{B}{B}{B}{B}{B}" } },
 
  */
 
 #[derive(Debug)]
 pub enum Effect {
-    ProduceMana(Pool), // like 'Dark Ritual'
+    ProduceMana(Pool),
+    RaiseLandLimit(u32),
     FetchLand { to_hand : Vec<String>, to_battlefield: Vec<String> }, // like 'Cultivate'
     Draw(Vec<u32>),                 // like 'Harmonize' or 'Read the Bones'
 }
