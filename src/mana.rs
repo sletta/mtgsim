@@ -164,14 +164,13 @@ impl std::fmt::Display for ManaPool {
         if self.colorless > 0 {
             write!(f, "{{{}}}", self.colorless).expect("formatting failed");
         }
-        [0..self.black].iter().for_each(|_| write!(f, "{{B}}").expect("formatting failed!"));
-        [0..self.blue].iter().for_each(|_| write!(f, "{{U}}").expect("formatting failed!"));
-        [0..self.green].iter().for_each(|_| write!(f, "{{G}}").expect("formatting failed!"));
-        [0..self.red].iter().for_each(|_| write!(f, "{{R}}").expect("formatting failed!"));
-        [0..self.white].iter().for_each(|_| write!(f, "{{W}}").expect("formatting failed!"));
-        // (0..self.black).iter().for_each(|_| write!(f, "{{B}}"));
+        (0..self.black).for_each(|_| write!(f, "{{B}}").expect("formatting failed!"));
+        (0..self.blue).for_each(|_| write!(f, "{{U}}").expect("formatting failed!"));
+        (0..self.green).for_each(|_| write!(f, "{{G}}").expect("formatting failed!"));
+        (0..self.red).for_each(|_| write!(f, "{{R}}").expect("formatting failed!"));
+        (0..self.white).for_each(|_| write!(f, "{{W}}").expect("formatting failed!"));
         self.multi.iter().flatten().for_each(|m| write!(f, "{}", m).expect("formatting failed!"));
-        [0..self.all].iter().for_each(|_| write!(f, "{{B/U/G/R/W}}").expect("formatting failed!"));
+        (0..self.all).for_each(|_| write!(f, "{{B/U/G/R/W}}").expect("formatting failed!"));
         return Ok(());
     }
 }
@@ -552,8 +551,11 @@ mod tests {
 
     #[test]
     fn test_manapool_display() {
-        let one_of_each_color = ManaPool::new_from_sequence(&vec![BLACK, BLUE, GREEN, RED, WHITE, COLORLESS, COLORLESS, COLORLESS]);
+        let one_of_each_color = ManaPool::new_from_sequence(&vec![BLACK, BLUE, GREEN, RED, WHITE, COLORLESS, ALL]);
         println!(" - one of each: {}", one_of_each_color);
+
+        let many_black = ManaPool::new_from_sequence(&vec![BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK]);
+        println!(" - 8 black: {}", many_black);
     }
 
     #[test]
@@ -661,5 +663,17 @@ mod tests {
         assert_eq!(obzedat_cost.white, 2);
         assert_eq!(obzedat_cost.colorless, 1);
         assert!(obzedat_cost.multi.is_none());
+
+        let many_black = ManaPool::new_from_string("{B}{B}{B}{B}{B}{B}{B}{B}").unwrap();
+        assert_eq!(many_black.all, 0);
+        assert_eq!(many_black.cmc(), 8);
+        assert_eq!(many_black.black, 8);
+        assert_eq!(many_black.blue, 0);
+        assert_eq!(many_black.green, 0);
+        assert_eq!(many_black.red, 0);
+        assert_eq!(many_black.white, 0);
+        assert_eq!(many_black.colorless, 0);
+        assert!(many_black.multi.is_none());
+
     }
 }

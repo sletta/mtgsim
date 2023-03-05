@@ -1,6 +1,7 @@
 use crate::zone::*;
 use crate::card::*;
 use crate::mana::*;
+// use rand::Rng;
 // use rand::distributions::{Distribution, Uniform};
 
 // use std::cmp::Ordering;
@@ -177,7 +178,8 @@ impl<'db, 'game> Turn<'db, 'game> {
 
         while self.try_to_play_land()
             || self.try_to_play_commander()
-            || self.try_to_ramp() {
+            || self.try_to_activate_ramp_ability()
+            || self.try_to_play_ramp_spell() {
             continue;
         }
 
@@ -199,7 +201,7 @@ impl<'db, 'game> Turn<'db, 'game> {
             if card.tapped {
                 continue;
             }
-            if add_permanents_mana_production_to_pool(&abilities, &mut self.mana_pool) {
+            if add_permanents_mana_production_to_pool(card, &abilities, &mut self.mana_pool) {
                 self.cards_in_mana_pool.insert(card.id);
             }
         }
@@ -347,118 +349,69 @@ impl<'db, 'game> Turn<'db, 'game> {
         return true;
     }
 
-    // pub fn can_satisfy_cost(&self, card: &Card<'db>, cost: &Cost) -> bool {
-    //     if cost.is_tap() && card.tapped {
-    //         return false;
-    //     }
-    //     if cost.is_sacrifice() && !self.game.battlefield.contains(card) {
-    //         return false;
-    //     }
-    //     if let Some(pool) = cost.is_mana() {
-    //         let mut total_mana_this_turn = self.mana_spent.expanded(&pool);
-    //         if  self.cards_in_mana_pool.contains(&card.id) {
-    //             if let Some(produced) = card.produced_mana() {
-    //                 total_mana_this_turn.add_pool(&produced);
-    //             }
-    //         }
-    //         return self.mana_pool.can_pay_for(&total_mana_this_turn);
-    //     }
-
-    //     return true;
-    // }
-
-    pub fn try_to_ramp(&mut self) -> bool {
-
-        let abilities = self.find_abilities_on_battlefield(|ability| {
-            match ability.effect {
+    fn try_to_activate_ramp_ability(&mut self) -> bool {
+        let mut abilities = self.find_abilities_on_battlefield(|ability| {
+            match &ability.effect {
                 Effect::FetchLand{to_hand: _, to_battlefield: _} => true,
                 _ => false
             }
         });
-
-        for (card, ability) in abilities {
-            println!(" - activated ramp candidate: {} :: {}", card, ability);
+        if abilities.is_empty() {
+            return false;
+        }
+        abilities.sort_by(|(_, ability_a), (_, ability_b)| {
+            let cost_a = ability_a.cost.is_mana().map_or(0, |cost| cost.cmc());
+            let cost_b = ability_b.cost.is_mana().map_or(0, |cost| cost.cmc());
+            cost_a.cmp(&cost_b)
+        });
+        if self.game.verbose {
+            for (card, ability) in &abilities {
+                println!(" - activated ramp candidate: {} :: {}", card, ability);
+            }
         }
 
-        // for card in self.game.battlefield.cards.iter() {
-        //     for ability in card.data.abilities.iter().flatten() {
-        //         match &ability.effect {
-        //             Effect::FetchLand{to_hand: types_to_hand, to_battlefield: types_to_battlefield} => {
-        //                 if ability.trigger != Trigger::Activated
-        //                     || !self.can_satisfy_cost(card, &ability.cost) {
-        //                     continue;
-        //                 }
-        //                 if self.game.verbose {
-        //                     println!(" - ramping (activated ability): {}", card);
-        //                 }
+        let (card, ability) = &abilities[0];
+        if self.game.verbose {
+            println!(" - activating {} :: {}", card, ability);
+        }
 
-        //                 if self.cards_in_mana_pool.contains(&card.id) {
-        //                     self.cards_in_mana_pool.remove(&card.id);
-        //                     if let Some(production) = card.produced_mana() {
-        //                         self.mana_pool.remove_exact_pool(&production);
-        //                         if self.game.verbose {
-        //                             println!(" - removing {} from mana pool", production);
-        //                         }
-        //                     }
-        //                 }
+        // now to sort out lifetimes of things here...
+        return false;
 
-        //                 if let Some(mana_cost) = ability.cost.is_mana() {
-        //                     // registering mana spent..
-        //                     self.mana_spent.add_pool(mana_cost);
-        //                 }
-
-        //                 if ability.cost.is_sacrifice() {
-        //                     if self.game.verbose {
-        //                         println!(" - sac'ing {}", card);
-        //                     }
-        //                     let tmp_card = self.game.battlefield.take(card.id);
-        //                     self.game.graveyard.add(tmp_card.expect("card missing!!!"));
-        //                 }
-
-        //                 fetch_lands(&mut self.game, types_to_hand, types_to_battlefield);
-        //                 return true;
-        //             },
-        //             _ => ()
-        //         }
-        //     }
+        // match &ability.effect {
+        //     Effect::FetchLand{to_hand: types_to_hand, to_battlefield: types_to_battlefield} => {
+        //         assert!(!ability.cost.is_tap() || !card.tapped);
+        //         fetch_lands(&mut self.game, types_to_hand, types_to_battlefield);
+        //     },
+        //     _ => panic!("unhandled ability type!!!")
         // }
 
-        // let mut candidates : Vec<Card> = Vec::new();
-        // for card in self.game.hand.cards.iter() {
-        //     if card.is_type(Types::Land)
-        //         || !card.is_ramp()
-        //         || self.mana_spent.cmc() + card.data.cmc > self.mana_pool.cmc() {
-        //         continue;
-        //     }
-        //     if self.game.verbose {
-        //         println!(" - ramp candidate (cast): {}", card);
-        //     }
-        //     candidates.push(card.clone());
-        // }
+        // let card = self.game.battlefield.take(card.id).unwrap();
+        // self.pay_activation_cost(card, &ability.cost);
+        // return true;
+    }
 
-        let candidates = self.find_spells_in_hand(|ability| {
+    pub fn try_to_play_ramp_spell(&mut self) -> bool {
+        let mut candidates = self.find_spells_in_hand(|ability| {
             match &ability.effect {
                 Effect::FetchLand{to_hand: _, to_battlefield: _} => true,
                 Effect::ProduceMana(_) => true,
-                Effect::LandLimit(_) => true,
+                Effect::LandLimit(_) => self.game.hand.cards.iter().any(|card| card.is_type(Types::Land)),
                 _ => false
             }
         });
-
+        if candidates.is_empty() {
+            return false;
+        }
+        candidates.sort_by(|a, b| a.data.cmc.cmp(&b.data.cmc));
         if self.game.verbose {
-            for card in candidates {
+            for card in &candidates {
                 println!(" - ramp spell candidate: {}", card);
             }
         }
 
-        // for card in candidates {
-        //     if ()
-            // if self.play_card_if_mana_allows(&card) {
-            //     return true;
-            // }
-        // }
-
-        return false;
+        self.play_card(candidates[0].id);
+        return true;
     }
 
     pub fn play_card(&mut self, id : u32) {
@@ -501,8 +454,17 @@ impl<'db, 'game> Turn<'db, 'game> {
                         fetch_lands(&mut self.game, types_to_hand, types_to_battlefield);
                     }
                 },
+                Effect::LandLimit(increase) => self.land_limit += increase,
                 _ => (),
 
+            }
+        }
+
+        // pay mana cost
+        if let Some(mana_cost) = &card.data.mana_cost {
+            match self.mana_pool.can_also_pay_for(&self.mana_spent, &mana_cost) {
+                Some(new_mana_spent) => self.mana_spent = new_mana_spent,
+                None => panic!("cannot pay for {}!!!", card)
             }
         }
 
@@ -519,26 +481,28 @@ impl<'db, 'game> Turn<'db, 'game> {
         }
     }
 
-    // fn play_card_if_mana_allows(&mut self, card : &Card<'db>) -> bool {
-
-    //     let mut total_cost = self.mana_spent.clone();
-    //     match &card.data.mana_cost {
-    //         Some(casting_cost) => total_cost.add_pool(&casting_cost),
-    //         None => ()
-    //     }
-
-    //     if !self.mana_pool.can_pay_for(&total_cost) {
-    //         if self.game.verbose {
-    //             println!(" - cannot afford to play {}, total-cost={}, available={}", card, total_cost, self.mana_pool);
-    //         }
-    //         return false;
-    //     }
-
-    //     self.mana_spent = total_cost;
-    //     self.play_card(card.id);
-
-    //     return true;
-    // }
+    // Pays the activation cost for the given card and cost. The card has been
+    // removed from the battlefield here and needs to be put back unless it
+    // is sacrificed, in which case it goes to graveyard.
+    fn pay_activation_cost(&mut self, mut card: Card<'db>, cost: &Cost) {
+        if cost.is_tap() {
+            assert!(!card.tapped);
+            card.tapped = true;
+        }
+        if cost.is_sacrifice() {
+            if let Some(mana_produced) = card.produced_mana() {
+                self.mana_pool.remove_exact_pool(&mana_produced);
+            }
+            self.game.graveyard.add(card);
+        } else {
+            // put the card back now we've modified it..
+            self.game.battlefield.add(card);
+        }
+        if let Some(mana_cost) = cost.is_mana() {
+            self.mana_spent.add_pool(&mana_cost);
+            assert!(self.mana_pool.can_pay_for(&self.mana_spent));
+        }
+    }
 }
 
 fn sort_cards_on_colors_produced(cards : &mut Vec<Card>) {
@@ -555,7 +519,7 @@ fn sort_cards_on_colors_produced(cards : &mut Vec<Card>) {
     });
 }
 
-fn add_permanents_mana_production_to_pool(abilities : &Vec<Ability>, pool : &mut ManaPool) -> bool {
+fn add_permanents_mana_production_to_pool(card: &Card, abilities : &Vec<Ability>, pool : &mut ManaPool) -> bool {
     let mut added = false;
     for ability in abilities.iter() {
         match &ability.trigger {
@@ -567,6 +531,11 @@ fn add_permanents_mana_production_to_pool(abilities : &Vec<Ability>, pool : &mut
             Cost::Tap => (),
             Cost::None => {},
              _ => continue
+        }
+        if ability.availability < 1.0 {
+            if rand::random::<f32>() > ability.availability {
+                continue;
+            }
         }
         match &ability.effect {
             Effect::ProduceMana(produced_mana) => {
