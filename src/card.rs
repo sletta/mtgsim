@@ -100,15 +100,14 @@ pub enum Types {
     ]
 },
 
-{   "name": "Black Market",     "trigger": "upkeep",    "availability": 0.25,    "effect": { "type": "mana", "produce": "{B}{B}{B}{B}{B}{B}{B}{B}" } },
 
  */
 
 #[derive(Debug)]
 pub enum Effect {
-    ProduceMana(Pool),
-    RaiseLandLimit(u32),
-    FetchLand { to_hand : Vec<String>, to_battlefield: Vec<String> }, // like 'Cultivate'
+    ProduceMana(ManaPool),
+    FetchLand { to_hand: Vec<String>, to_battlefield: Vec<String> }, // like 'Cultivate'
+    LandLimit(u32), // the increase in playable lands
     Draw(Vec<u32>),                 // like 'Harmonize' or 'Read the Bones'
 }
 
@@ -124,38 +123,38 @@ pub enum Cost {
     None,
     Tap,
     Sacrifice,
-    Mana(Pool),
+    Mana(ManaPool),
     TapSacrifice,
-    TapMana(Pool),
-    TapManaSacrifice(Pool),
+    TapMana(ManaPool),
+    TapManaSacrifice(ManaPool),
 }
 
 #[derive(Debug)]
 pub struct Ability {
     pub trigger: Trigger,
-    pub cost : Cost,
-    pub effect : Effect,
-    pub availability : f32,
+    pub cost: Cost,
+    pub effect: Effect,
+    pub availability: f32,
 }
 
 #[derive(Debug)]
 pub struct CardData {
     pub name: String,
     pub cmc: u32,
-    pub mana_cost: Option<Pool>,
+    pub mana_cost: Option<ManaPool>,
     pub type_string: String,
     pub types: BitFlags<Types>,
 
     pub produced_mana: Option<Mana>,
-    pub enters_tapped : bool,
+    pub enters_tapped: bool,
 
-    pub abilities : Option<Vec<Ability>>,
+    pub abilities: Option<Vec<Ability>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Card<'db> {
-    pub id : u32,
-    pub data : &'db CardData,
+    pub id: u32,
+    pub data: &'db CardData,
     pub tapped: bool
 }
 
@@ -227,7 +226,7 @@ impl<'db> Card<'db> {
         return false;
     }
 
-    pub fn produced_mana(&self) -> Option<Pool> {
+    pub fn produced_mana(&self) -> Option<ManaPool> {
         for ability in self.data.abilities.iter().flatten() {
             match &ability.effect {
                 Effect::ProduceMana(mana) => return Some(mana.clone()),
@@ -251,24 +250,55 @@ impl<'db> std::fmt::Display for Card<'db> {
     }
 }
 
-impl CardData {
-
-    pub fn calculate_produced_mana(&self) -> Option<Mana> {
-        for ability in self.abilities.as_ref()?.iter() {
-            match &ability.effect {
-                Effect::ProduceMana(pool) => return Some(pool.union_of_all_colors()),
-                _ => ()
-            }
+impl std::fmt::Display for Cost {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Cost::None => write!(f, "none"),
+            Cost::Tap => write!(f, "tap"),
+            Cost::Sacrifice => write!(f, "sac"),
+            Cost::Mana(pool) => write!(f, "{}", pool),
+            Cost::TapSacrifice => write!(f, "tap,sac"),
+            Cost::TapMana(pool) => write!(f, "tap,{}", pool),
+            Cost::TapManaSacrifice(pool) => write!(f, "tap,sac,{}", pool),
         }
-        return None;
     }
+}
+
+impl std::fmt::Display for Trigger {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Trigger::Cast => write!(f, "cast"),
+            Trigger::Activated => write!(f, "activated"),
+            Trigger::Upkeep => write!(f, "upkeep")
+        }
+    }
+}
+
+impl std::fmt::Display for Effect {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Effect::ProduceMana(pool) => write!(f, "produce={}", pool),
+            Effect::FetchLand { to_hand: hand, to_battlefield: bf } => write!(f, "fetch={}/{}", hand.len(), bf.len()),
+            Effect::LandLimit(increase) => write!(f, "land-limit=+{}", increase),
+            Effect::Draw(ratios) => write!(f, "draw({:?})", ratios)
+        }
+    }
+}
+
+impl std::fmt::Display for Ability {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Ability({} {} {})", self.effect, self.trigger, self.cost)
+    }
+}
+
+impl CardData {
 
     #[cfg(test)]
     pub fn make_sol_ring_data() -> CardData {
         return CardData {
             name: "Sol Ring".to_string(),
             cmc: 1,
-            mana_cost: Some(Pool { sequence: vec![COLORLESS] }),
+            mana_cost: Some(ManaPool::new_from_sequence(&vec![COLORLESS])),
             type_string: "Artifact".to_string(),
             types: enumflags2::make_bitflags!(Types::{Artifact}),
             produced_mana: Some(COLORLESS),
@@ -276,7 +306,7 @@ impl CardData {
             abilities: Some(vec![ Ability {
                 trigger: Trigger::Activated,
                 cost: Cost::Tap,
-                effect: Effect::ProduceMana(make_pool![COLORLESS, COLORLESS]),
+                effect: Effect::ProduceMana(ManaPool::new_from_sequence(&vec![COLORLESS, COLORLESS])),
                 availability: 1.0
             }])
         };
@@ -287,7 +317,7 @@ impl CardData {
         return CardData {
             name: "Commander's Sphere".to_string(),
             cmc: 1,
-            mana_cost: Some(Pool { sequence: vec![COLORLESS, COLORLESS, COLORLESS] }),
+            mana_cost: Some(ManaPool::new_from_sequence(&vec![COLORLESS, COLORLESS, COLORLESS])),
             type_string: "Artifact".to_string(),
             types: enumflags2::make_bitflags!(Types::{Artifact}),
             produced_mana: Some(ALL),
@@ -295,7 +325,7 @@ impl CardData {
             abilities: Some(vec! [ Ability {
                 trigger: Trigger::Activated,
                 cost: Cost::Tap,
-                effect: Effect::ProduceMana(make_pool![ALL]),
+                effect: Effect::ProduceMana(ManaPool::new_from_sequence(&vec![ALL])),
                 availability: 1.0
             }])
         };
@@ -314,7 +344,7 @@ impl CardData {
             abilities: Some(vec! [ Ability {
                 trigger: Trigger::Activated,
                 cost: Cost::Tap,
-                effect: Effect::ProduceMana(make_pool![WHITE]),
+                effect: Effect::ProduceMana(ManaPool::new_from_sequence(&vec![WHITE])),
                 availability: 1.0
             }])
         };
@@ -333,7 +363,7 @@ impl CardData {
             abilities: Some(vec! [ Ability {
                 trigger: Trigger::Activated,
                 cost: Cost::Tap,
-                effect: Effect::ProduceMana(make_pool![BLACK]),
+                effect: Effect::ProduceMana(ManaPool::new_from_sequence(&vec![BLACK])),
                 availability: 1.0
             }])
         };
@@ -352,7 +382,7 @@ impl CardData {
             abilities: Some(vec! [ Ability {
                 trigger: Trigger::Activated,
                 cost: Cost::Tap,
-                effect: Effect::ProduceMana(make_pool![ALL]),
+                effect: Effect::ProduceMana(ManaPool::new_from_sequence(&vec![ALL])),
                 availability: 1.0
             }])
         };
@@ -371,7 +401,7 @@ impl CardData {
             abilities: Some(vec![ Ability {
                 trigger: Trigger::Activated,
                 cost: Cost::Tap,
-                effect: Effect::ProduceMana(make_pool![Mana::make_dual(Color::Black, Color::Green)]),
+                effect: Effect::ProduceMana(ManaPool::new_from_sequence(&vec![Mana::make_dual(Color::Black, Color::Green)])),
                 availability: 1.0
             }])
         };
@@ -382,7 +412,7 @@ impl CardData {
         return CardData {
             name: "Just an Elk".to_string(),
             cmc: 3,
-            mana_cost: Some(make_pool![COLORLESS, COLORLESS, GREEN]),
+            mana_cost: Some(ManaPool::new_from_sequence(&vec![COLORLESS, COLORLESS, GREEN])),
             type_string: "Creature".to_string(),
             types: enumflags2::make_bitflags!(Types::{Creature}),
             produced_mana: None,
@@ -403,7 +433,7 @@ impl Cost {
         }
     }
 
-    pub fn is_mana(&self) -> Option<&Pool> {
+    pub fn is_mana(&self) -> Option<&ManaPool> {
         match self {
             Cost::Mana(pool) => Some(pool),
             Cost::TapMana(pool) => Some(pool),

@@ -66,13 +66,20 @@
 {   "name": "Sol Ring",                     "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}{C}" } },
 
 
-{   "comment": "Ramp (land fetches)" },
+{   "comment": "Ramp (spells)" },
 {   "name": "Cultivate",                    "trigger": "cast", "effect": { "type": "land-fetch", "to-hand": "basic land", "to-battlefield": "basic land" } },
 {   "name": "Far Wanderings",               "trigger": "cast", "effect": { "type": "land-fetch", "to-battlefield": "basic land" } },
 {   "name": "Vastwood Surge",               "trigger": "cast", "effect": { "type": "land-fetch", "to-battlefield": [ "basic land", "basic land" ] } },
-
+{   "name": "Scale the Heights",            "abilities": [ {
+        "trigger": "cast",
+        "effect": { "type": "draw", "count": 1 }
+    }, {
+        "trigger": "cast",
+        "effect": { "type": "land-limit", "increase": 1 }
+    } ] },
 
 {   "comment": "Ramp (other)" },
+{   "name": "Black Market",     "trigger": "upkeep",    "availability": 0.25,    "effect": { "type": "mana", "produce": "{B}{B}{B}{B}{B}{B}{B}{B}" } },
 
 
 {   "comment": "Various" },

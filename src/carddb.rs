@@ -30,9 +30,9 @@ fn parse_enters_tapped(name : &str, oracle_text : &str) -> bool {
     }
 }
 
-fn parse_mana_pool(object: &json::object::Object, property: &str) -> Result<mana::Pool, String> {
+fn parse_mana_pool(object: &json::object::Object, property: &str) -> Result<mana::ManaPool, String> {
     match object[property].as_str() {
-        Some(string) => Ok(mana::Pool::parse_cost(string)?),
+        Some(string) => Ok(mana::ManaPool::new_from_string(string)?),
         None => Err("invalid 'mana::produce' value".to_string())
     }
 }
@@ -100,11 +100,32 @@ fn parse_effect_land_fetch(object : &json::object::Object) -> Result<card::Effec
     });
 }
 
+fn parse_effect_draw(object: &json::object::Object) -> Result<card::Effect, String> {
+    let json_count = &object["count"];
+    if json_count.is_array() {
+        let mut draw_ratios: Vec<u32> = Vec::new();
+        for value in json_count.members() {
+            draw_ratios.push(value.as_u32().unwrap());
+        }
+        return Ok(card::Effect::Draw(draw_ratios));
+    } else if let Some(single_value) = json_count.as_u32() {
+        return Ok(card::Effect::Draw(vec![single_value]));
+    }
+    return Err("failed to parse 'draw' effect!".to_string());
+}
+
 fn parse_effect_mana(object : &json::object::Object) -> Result<card::Effect, String> {
     match object["produce"].as_str() {
-        Some(string) => Ok(card::Effect::ProduceMana(mana::Pool::parse_cost(string)?)),
+        Some(string) => Ok(card::Effect::ProduceMana(mana::ManaPool::new_from_string(string)?)),
         None => Err("invalid 'mana::produce' value".to_string())
     }
+}
+
+fn parse_effect_land_limit(object: &json::object::Object) -> Result<card::Effect, String> {
+    if let Some(increase) = &object["increase"].as_u32() {
+        return Ok(card::Effect::LandLimit(increase.clone()));
+    }
+    return Err("invalid 'increase' in land-limit".to_string())
 }
 
 fn parse_effect(object : &json::JsonValue) -> Result<card::Effect, String> {
@@ -113,7 +134,8 @@ fn parse_effect(object : &json::JsonValue) -> Result<card::Effect, String> {
             match effect_object["type"].as_str() {
                 Some("mana") => Ok(card::Effect::ProduceMana(parse_mana_pool(effect_object, "produce")?)),
                 Some("land-fetch") => parse_effect_land_fetch(effect_object),
-                Some("land-limit") => Err("not implemented yet..".to_string()),
+                Some("draw") => parse_effect_draw(effect_object),
+                Some("land-limit") => parse_effect_land_limit(effect_object),
                 _ => Err("invalid 'effect::type' string".to_string())
             }
         },
@@ -194,7 +216,7 @@ impl DB {
         let mut entry = card::CardData {
             name: json_object["name"].to_string(),
             cmc: json_object["cmc"].as_f32().expect("cmc is not a number!") as u32,
-            mana_cost: match mana::Pool::parse_cost(&json_object["mana_cost"].to_string()) {
+            mana_cost: match mana::ManaPool::new_from_string(&json_object["mana_cost"].to_string()) {
                 Ok(pool) => Some(pool),
                 Err(_) => None
             },

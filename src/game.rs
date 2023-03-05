@@ -33,8 +33,8 @@ struct Turn<'db, 'game> {
     turn_number: u32,
     lands_played : u32,
     land_limit: u32,
-    mana_pool : Pool,
-    mana_spent : Pool,
+    mana_pool : ManaPool,
+    mana_spent : ManaPool,
     turn_stats : TurnStats,
     cards_in_mana_pool: std::collections::HashSet<u32>
 }
@@ -148,8 +148,8 @@ impl<'db, 'game> Turn<'db, 'game> {
             turn_number: turn,
             lands_played: 0,
             land_limit: 1,
-            mana_pool: Pool::new(),
-            mana_spent: Pool::new(),
+            mana_pool: ManaPool::new(),
+            mana_spent: ManaPool::new(),
             turn_stats: TurnStats {
                 turn_number: turn,
                 lands_played: 0,
@@ -167,10 +167,7 @@ impl<'db, 'game> Turn<'db, 'game> {
 
         if self.game.verbose {
             println!("\n***** Turn #{} *****", self.turn_number);
-            println!(" - available mana: {} ({})", self.mana_pool, self.mana_pool.converted_mana_cost());
-        }
-
-        if self.game.verbose {
+            println!(" - available mana: {} ({})", self.mana_pool, self.mana_pool.cmc());
         }
 
         // draw card for turn..
@@ -186,15 +183,15 @@ impl<'db, 'game> Turn<'db, 'game> {
 
         if self.game.verbose {
             println!(" - nothing more to do...");
-            println!(" - available mana: {} ({})", self.mana_pool, self.mana_pool.converted_mana_cost());
-            println!(" - spent mana: {} ({})", self.mana_spent, self.mana_spent.converted_mana_cost());
+            println!(" - available mana: {} ({})", self.mana_pool, self.mana_pool.cmc());
+            println!(" - spent mana: {} ({})", self.mana_spent, self.mana_spent.cmc());
             self.game.hand.dump();
             self.game.battlefield.sort();
             self.game.battlefield.dump();
         }
 
-        self.turn_stats.mana_available = self.mana_pool.converted_mana_cost();
-        self.turn_stats.mana_spent = self.mana_spent.converted_mana_cost();
+        self.turn_stats.mana_available = self.mana_pool.cmc();
+        self.turn_stats.mana_spent = self.mana_spent.cmc();
     }
 
     pub fn gather_mana_pool(&mut self) {
@@ -206,6 +203,72 @@ impl<'db, 'game> Turn<'db, 'game> {
                 self.cards_in_mana_pool.insert(card.id);
             }
         }
+    }
+
+    fn find_abilities_on_battlefield<F>(&self, selector: F) -> Vec<(Card<'db>, &Ability)> where F: Fn(&Ability) -> bool {
+
+        let mut result : Vec<(Card, &Ability)> = Vec::new();
+        for card in &self.game.battlefield.cards {
+            for ability in card.data.abilities.iter().flatten() {
+                // Only match activated abilities
+                match &ability.trigger {
+                    Trigger::Activated => (),
+                    _ => continue
+                }
+
+                if !selector(ability) {
+                    continue;
+                }
+
+                // If it requires tapping, skip if we're already tapped.
+                if ability.cost.is_tap() && card.tapped {
+                    continue;
+                }
+
+                // Finally, check the mana cost. A little gotcha here is that
+                // some cards are both tapped as activated abilities and
+                // tapped for mana, so for these cards, we've already added
+                // their mana to the mana pool, so we need to take it back
+                // out account when checking if we can afford to pay it.
+                if let Some(ability_cost) = ability.cost.is_mana() {
+                    let mut mana_pool = self.mana_pool.clone();
+                    if  self.cards_in_mana_pool.contains(&card.id) {
+                        if let Some(produced) = card.produced_mana() {
+                            mana_pool.remove_exact_pool(&produced);
+                        }
+                    }
+                    if mana_pool.can_also_pay_for(&self.mana_spent, &ability_cost) == None {
+                        continue;
+                    }
+                }
+
+                // All good, lets include this ability
+                result.push((card.clone(), ability));
+            }
+        }
+        return result;
+    }
+
+    pub fn find_spells_in_hand<F>(&self, selector: F) -> Vec<Card<'db>> where F : Fn(&Ability) -> bool {
+        let mut result: Vec<Card> = Vec::new();
+        for card in &self.game.hand.cards {
+            for ability in card.data.abilities.iter().flatten() {
+                if card.is_type(Types::Land) {
+                    continue;
+                }
+
+                if !selector(ability) {
+                    continue;
+                }
+                if let Some(casting_cost) = &card.data.mana_cost {
+                    if self.mana_pool.can_also_pay_for(&self.mana_spent, &casting_cost) == None {
+                        continue;
+                    }
+                }
+                result.push(card.clone());
+            }
+        }
+        return result;
     }
 
     pub fn try_to_play_commander(&mut self) -> bool {
@@ -284,92 +347,116 @@ impl<'db, 'game> Turn<'db, 'game> {
         return true;
     }
 
-    pub fn can_satisfy_cost(&self, card: &Card<'db>, cost: &Cost) -> bool {
+    // pub fn can_satisfy_cost(&self, card: &Card<'db>, cost: &Cost) -> bool {
+    //     if cost.is_tap() && card.tapped {
+    //         return false;
+    //     }
+    //     if cost.is_sacrifice() && !self.game.battlefield.contains(card) {
+    //         return false;
+    //     }
+    //     if let Some(pool) = cost.is_mana() {
+    //         let mut total_mana_this_turn = self.mana_spent.expanded(&pool);
+    //         if  self.cards_in_mana_pool.contains(&card.id) {
+    //             if let Some(produced) = card.produced_mana() {
+    //                 total_mana_this_turn.add_pool(&produced);
+    //             }
+    //         }
+    //         return self.mana_pool.can_pay_for(&total_mana_this_turn);
+    //     }
 
-        if cost.is_tap() && card.tapped {
-            return false;
-        }
-
-        if cost.is_sacrifice() && !self.game.battlefield.contains(card) {
-            return false;
-        }
-
-        if let Some(pool) = cost.is_mana() {
-            let mut total_mana_this_turn = self.mana_spent.expanded(&pool);
-            if  self.cards_in_mana_pool.contains(&card.id) {
-                if let Some(produced) = card.produced_mana() {
-                    total_mana_this_turn.add(&produced);
-                }
-            }
-            return self.mana_pool.can_pay_for(&total_mana_this_turn);
-        }
-
-        return true;
-    }
+    //     return true;
+    // }
 
     pub fn try_to_ramp(&mut self) -> bool {
 
-        for card in self.game.battlefield.cards.iter() {
-            for ability in card.data.abilities.iter().flatten() {
-                match &ability.effect {
-                    Effect::FetchLand{to_hand: types_to_hand, to_battlefield: types_to_battlefield} => {
-                        if ability.trigger != Trigger::Activated
-                            || !self.can_satisfy_cost(card, &ability.cost) {
-                            continue;
-                        }
-                        if self.game.verbose {
-                            println!(" - ramping (activated ability): {}", card);
-                        }
+        let abilities = self.find_abilities_on_battlefield(|ability| {
+            match ability.effect {
+                Effect::FetchLand{to_hand: _, to_battlefield: _} => true,
+                _ => false
+            }
+        });
 
-                        if self.cards_in_mana_pool.contains(&card.id) {
-                            self.cards_in_mana_pool.remove(&card.id);
-                            if let Some(production) = card.produced_mana() {
-                                self.mana_pool.remove(&production);
-                                if self.game.verbose {
-                                    println!(" - removing {} from mana pool", production);
-                                }
-                            }
-                        }
+        for (card, ability) in abilities {
+            println!(" - activated ramp candidate: {} :: {}", card, ability);
+        }
 
-                        if let Some(mana_cost) = ability.cost.is_mana() {
-                            // registering mana spent..
-                            self.mana_spent.add(mana_cost);
-                        }
+        // for card in self.game.battlefield.cards.iter() {
+        //     for ability in card.data.abilities.iter().flatten() {
+        //         match &ability.effect {
+        //             Effect::FetchLand{to_hand: types_to_hand, to_battlefield: types_to_battlefield} => {
+        //                 if ability.trigger != Trigger::Activated
+        //                     || !self.can_satisfy_cost(card, &ability.cost) {
+        //                     continue;
+        //                 }
+        //                 if self.game.verbose {
+        //                     println!(" - ramping (activated ability): {}", card);
+        //                 }
 
-                        if ability.cost.is_sacrifice() {
-                            if self.game.verbose {
-                                println!(" - sac'ing {}", card);
-                            }
-                            let tmp_card = self.game.battlefield.take(card.id);
-                            self.game.graveyard.add(tmp_card.expect("card missing!!!"));
-                        }
+        //                 if self.cards_in_mana_pool.contains(&card.id) {
+        //                     self.cards_in_mana_pool.remove(&card.id);
+        //                     if let Some(production) = card.produced_mana() {
+        //                         self.mana_pool.remove_exact_pool(&production);
+        //                         if self.game.verbose {
+        //                             println!(" - removing {} from mana pool", production);
+        //                         }
+        //                     }
+        //                 }
 
-                        fetch_lands(&mut self.game, types_to_hand, types_to_battlefield);
-                        return true;
-                    },
-                    _ => ()
-                }
+        //                 if let Some(mana_cost) = ability.cost.is_mana() {
+        //                     // registering mana spent..
+        //                     self.mana_spent.add_pool(mana_cost);
+        //                 }
+
+        //                 if ability.cost.is_sacrifice() {
+        //                     if self.game.verbose {
+        //                         println!(" - sac'ing {}", card);
+        //                     }
+        //                     let tmp_card = self.game.battlefield.take(card.id);
+        //                     self.game.graveyard.add(tmp_card.expect("card missing!!!"));
+        //                 }
+
+        //                 fetch_lands(&mut self.game, types_to_hand, types_to_battlefield);
+        //                 return true;
+        //             },
+        //             _ => ()
+        //         }
+        //     }
+        // }
+
+        // let mut candidates : Vec<Card> = Vec::new();
+        // for card in self.game.hand.cards.iter() {
+        //     if card.is_type(Types::Land)
+        //         || !card.is_ramp()
+        //         || self.mana_spent.cmc() + card.data.cmc > self.mana_pool.cmc() {
+        //         continue;
+        //     }
+        //     if self.game.verbose {
+        //         println!(" - ramp candidate (cast): {}", card);
+        //     }
+        //     candidates.push(card.clone());
+        // }
+
+        let candidates = self.find_spells_in_hand(|ability| {
+            match &ability.effect {
+                Effect::FetchLand{to_hand: _, to_battlefield: _} => true,
+                Effect::ProduceMana(_) => true,
+                Effect::LandLimit(_) => true,
+                _ => false
+            }
+        });
+
+        if self.game.verbose {
+            for card in candidates {
+                println!(" - ramp spell candidate: {}", card);
             }
         }
 
-        let mut candidates : Vec<Card> = Vec::new();
-        for card in self.game.hand.cards.iter() {
-            if card.is_type(Types::Land)
-                || !card.is_ramp()
-                || self.mana_spent.converted_mana_cost() + card.data.cmc > self.mana_pool.converted_mana_cost() {
-                continue;
-            }
-            if self.game.verbose {
-                println!(" - ramp candidate (cast): {}", card);
-            }
-            candidates.push(card.clone());
-        }
-
-        for card in candidates {
-            if self.play_card_if_mana_allows(&card) {
-                return true;
-            }
-        }
+        // for card in candidates {
+        //     if ()
+            // if self.play_card_if_mana_allows(&card) {
+            //     return true;
+            // }
+        // }
 
         return false;
     }
@@ -396,7 +483,7 @@ impl<'db, 'game> Turn<'db, 'game> {
         // Resolving card ability...
         for ability in card.data.abilities.iter().flatten() {
             match &ability.effect {
-                Effect::ProduceMana(mana) => {
+                Effect::ProduceMana(pool) => {
                     // Lands, mana rocks, mana dorks, etc..
                     if permanent
                         && !card.tapped
@@ -405,7 +492,7 @@ impl<'db, 'game> Turn<'db, 'game> {
                         if self.game.verbose {
                             println!(" - permanent's mana ability added to pool...");
                         }
-                       self.mana_pool.add(mana);
+                       self.mana_pool.add_pool(pool);
                        self.cards_in_mana_pool.insert(card.id);
                     }
                 },
@@ -432,26 +519,26 @@ impl<'db, 'game> Turn<'db, 'game> {
         }
     }
 
-    fn play_card_if_mana_allows(&mut self, card : &Card<'db>) -> bool {
+    // fn play_card_if_mana_allows(&mut self, card : &Card<'db>) -> bool {
 
-        let mut total_cost = self.mana_spent.clone();
-        match &card.data.mana_cost {
-            Some(casting_cost) => total_cost.add(&casting_cost),
-            None => ()
-        }
+    //     let mut total_cost = self.mana_spent.clone();
+    //     match &card.data.mana_cost {
+    //         Some(casting_cost) => total_cost.add_pool(&casting_cost),
+    //         None => ()
+    //     }
 
-        if !self.mana_pool.can_pay_for(&total_cost) {
-            if self.game.verbose {
-                println!(" - cannot afford to play {}, total-cost={}, available={}", card, total_cost, self.mana_pool);
-            }
-            return false;
-        }
+    //     if !self.mana_pool.can_pay_for(&total_cost) {
+    //         if self.game.verbose {
+    //             println!(" - cannot afford to play {}, total-cost={}, available={}", card, total_cost, self.mana_pool);
+    //         }
+    //         return false;
+    //     }
 
-        self.mana_spent = total_cost;
-        self.play_card(card.id);
+    //     self.mana_spent = total_cost;
+    //     self.play_card(card.id);
 
-        return true;
-    }
+    //     return true;
+    // }
 }
 
 fn sort_cards_on_colors_produced(cards : &mut Vec<Card>) {
@@ -468,7 +555,7 @@ fn sort_cards_on_colors_produced(cards : &mut Vec<Card>) {
     });
 }
 
-fn add_permanents_mana_production_to_pool(abilities : &Vec<Ability>, pool : &mut Pool) -> bool {
+fn add_permanents_mana_production_to_pool(abilities : &Vec<Ability>, pool : &mut ManaPool) -> bool {
     let mut added = false;
     for ability in abilities.iter() {
         match &ability.trigger {
@@ -483,7 +570,7 @@ fn add_permanents_mana_production_to_pool(abilities : &Vec<Ability>, pool : &mut
         }
         match &ability.effect {
             Effect::ProduceMana(produced_mana) => {
-                pool.add(produced_mana);
+                pool.add_pool(produced_mana);
                 added = true;
             },
             _ => continue
@@ -533,9 +620,9 @@ mod tests {
 
         let mut turn = Turn::new(&mut game, 42);
         turn.gather_mana_pool();
-        assert_eq!(turn.mana_pool.count(&COLORLESS), 2);
-        assert_eq!(turn.mana_pool.count(&ALL), 2);
-        assert_eq!(turn.mana_pool.count(&BLACK), 1);
+        assert_eq!(turn.mana_pool.colorless, 2);
+        assert_eq!(turn.mana_pool.all, 2);
+        assert_eq!(turn.mana_pool.black, 1);
     }
 
     #[test]

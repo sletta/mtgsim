@@ -1,9 +1,11 @@
 #[allow(unused_imports)]
 use itertools::Itertools;
+#[allow(unused_imports)]
+use std::time::{Duration, Instant};
 
 use enumflags2::{bitflags, BitFlags};
 
-use std::time::{Duration, Instant};
+
 
 #[bitflags]
 #[repr(u8)]
@@ -21,9 +23,16 @@ pub struct Mana {
     colors : BitFlags<Color>
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct Pool {
-    pub sequence: Vec<Mana>
+#[derive(Debug, Clone, PartialEq)]
+pub struct ManaPool {
+    pub black: u32,
+    pub blue: u32,
+    pub green: u32,
+    pub red: u32,
+    pub white: u32,
+    pub colorless: u32,
+    pub all: u32,
+    pub multi: Option<Vec<Mana>> // make this optional
 }
 
 pub const COLORLESS : Mana  = Mana { colors: BitFlags::EMPTY };
@@ -76,31 +85,6 @@ impl std::fmt::Display for Mana {
         }
 
         write!(f, "{}", text)
-    }
-}
-
-// impl Iterator for Mana {
-
-//     type Item = Color;
-
-//     fn next(&mut self) -> Option<Self::Item> {
-//         return
-//     }
-// }
-
-impl std::fmt::Display for Pool {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if self.sequence.len() == 0 {
-            return write!(f, "n/a");
-        }
-        let colorless_cost = self.sequence.iter().filter(|&mana| mana.is_colorless()).count();
-        if colorless_cost > 0 {
-            write!(f, "{{{}}}", colorless_cost).expect("formatting failed");
-        }
-        for i in self.sequence.iter().filter(|&mana| !mana.is_colorless()) {
-            write!(f, "{}", i).expect("formatting failed!");
-        }
-        return Ok(());
     }
 }
 
@@ -172,178 +156,26 @@ impl Mana {
     }
 }
 
-impl Pool {
-
-    #[allow(dead_code)]
-    pub fn new() -> Self {
-        return Self { sequence: Vec::new() };
-    }
-
-    pub fn converted_mana_cost(&self) -> u32 {
-        return self.sequence.len() as u32;
-    }
-
-    pub fn add(&mut self, other : &Pool) {
-        other.sequence.iter().for_each(|color| self.sequence.push((*color).clone()));
-    }
-
-    pub fn count(&self, color : &Mana) -> u32 {
-        return self.sequence.iter().filter(|m| m.colors == color.colors).count() as u32;
-    }
-
-    pub fn expanded(&self, other : &Pool) -> Pool {
-        let mut pool = self.clone();
-        pool.add(other);
-        return pool;
-    }
-
-    pub fn remove(&mut self, other: &Pool) {
-        for mana_to_remove in &other.sequence {
-            let mut i = 0;
-            let mut found: bool = false;
-            while !found && i < self.sequence.len() {
-                if self.sequence[i].colors == mana_to_remove.colors {
-                    self.sequence.remove(i);
-                    found = true;
-                }
-                i += 1;
-            }
-            assert!(found);
+impl std::fmt::Display for ManaPool {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if self.cmc() == 0 {
+            return write!(f, "n/a");
         }
-    }
-
-    pub fn union_of_all_colors(&self) -> Mana {
-        let mut mana = Mana::new();
-        for m in self.sequence.iter() {
-            mana.unite(m);
+        if self.colorless > 0 {
+            write!(f, "{{{}}}", self.colorless).expect("formatting failed");
         }
-        return mana;
-    }
-
-    pub fn parse_cost(cost : &str) -> Result<Self, String> {
-        let re = regex::Regex::new(r"([0-9BCGRUW/]+)").expect("failed to crate manacost reggexp");
-        let mut colors : Vec<Mana> = Vec::new();
-        for cap in re.find_iter(cost) {
-            let value = cap.as_str();
-            if value.contains("/") {
-                let mut mana = Mana::new();
-                for i in value.split('/') {
-                    mana.set_from_string(i);
-                }
-                colors.push(mana);
-                continue;
-            }
-            match value {
-                "C" => colors.push(COLORLESS),
-                "B" => colors.push(BLACK),
-                "U" => colors.push(BLUE),
-                "G" => colors.push(GREEN),
-                "R" => colors.push(RED),
-                "W" => colors.push(WHITE),
-                _ => {
-                    let count = value.parse::<u32>().unwrap_or_else(|e| panic!("failed to parse mana value! error={:?}, value='{:?}'", e, value));
-                    for _i in 0..count {
-                        colors.push(COLORLESS);
-                    }
-                }
-            }
-        }
-
-        if colors.len() == 0 {
-            return Err(format!("invalid mana cost... {:?}", cost));
-        }
-
-        let mana_cost = Pool { sequence: colors };
-        return Ok(mana_cost);
-    }
-
-    pub fn can_also_pay_for(&self, already_spent: &Pool, additional_cost: &Pool) -> Option<Pool> {
-        let total_cmc = already_spent.converted_mana_cost()
-            + additional_cost.converted_mana_cost();
-        if total_cmc > self.converted_mana_cost() {
-            return None;
-        }
-
-        let total = already_spent.expanded(additional_cost);
-        if self.can_pay_for(&total) {
-            return Some(total);
-        }
-        return None;
-    }
-
-    pub fn can_pay_for(&self, other : &Pool) -> bool {
-        if other.converted_mana_cost() > self.converted_mana_cost() {
-            return false;
-        }
-
-        let mut source = self.sequence.clone();
-        let mut cost = other.sequence.clone();
-
-        // To cut down on the number of permutations we need to look at we can
-        // start out by subtracting all perfect matches right away. If we're
-        // asking being asked for a green mana and we have a source providing
-        // exactly green mana, then we can simply extract that cost from both
-        // the source and the cost and cut down our iteration down below
-        // quite a bit.
-        let mut i = 0;
-        while i < cost.len() {
-            let mut exact_match : i32 = -1;
-            for j in 0..source.len() {
-                if source[j].can_pay_for_exactly(&cost[i]) {
-                    exact_match = j as i32;
-                    break;
-                }
-            }
-            if exact_match >= 0 {
-                source.remove(exact_match as usize);
-                cost.remove(i);
-            } else {
-                i += 1;
-            }
-        }
-
-        // early out.. if a color in the cost is not in the source, permuting
-        // is pointless..
-        for in_cost in cost.iter() {
-            if source.iter().any(|m| m.can_pay_for(&in_cost)) {
-                continue;
-            }
-            return false;
-        }
-
-        // Generate all permutations of the mana sources. If compatible, we'll
-        // then eventually land on a permutation of mana sources that can pay
-        // for the specificed cost.
-        let mut perms = 0;
-        for perm in source.iter().permutations(source.len()) {
-            perms = perms + 1;
-            let mut accepted = true;
-            for i in 0..cost.len() {
-                if !perm[i].can_pay_for(&cost[i]) {
-                    accepted = false;
-                    continue;
-                }
-            }
-            if accepted {
-                return true;
-            }
-        }
-
-        return false;
+        [0..self.black].iter().for_each(|_| write!(f, "{{B}}").expect("formatting failed!"));
+        [0..self.blue].iter().for_each(|_| write!(f, "{{U}}").expect("formatting failed!"));
+        [0..self.green].iter().for_each(|_| write!(f, "{{G}}").expect("formatting failed!"));
+        [0..self.red].iter().for_each(|_| write!(f, "{{R}}").expect("formatting failed!"));
+        [0..self.white].iter().for_each(|_| write!(f, "{{W}}").expect("formatting failed!"));
+        // (0..self.black).iter().for_each(|_| write!(f, "{{B}}"));
+        self.multi.iter().flatten().for_each(|m| write!(f, "{}", m).expect("formatting failed!"));
+        [0..self.all].iter().for_each(|_| write!(f, "{{B/U/G/R/W}}").expect("formatting failed!"));
+        return Ok(());
     }
 }
 
-#[derive(Debug, Clone)]
-struct ManaPool {
-    pub black: u32,
-    pub blue: u32,
-    pub green: u32,
-    pub red: u32,
-    pub white: u32,
-    pub colorless: u32,
-    pub all: u32,
-    pub multi: Option<Vec<Mana>> // make this optional
-}
 
 impl ManaPool {
     pub fn new() -> Self {
@@ -534,7 +366,6 @@ impl ManaPool {
 
     pub fn can_pay_for(&self, cost: &ManaPool) -> bool {
         if self.cmc() < cost.cmc() {
-            println!(" - mana cost is too high...");
             return false;
         }
 
@@ -609,20 +440,6 @@ impl ManaPool {
     }
 
 }
-
-macro_rules! make_pool {
-    ( $( $x:expr ),* ) => {
-        {
-            let mut pool = Pool::new();
-            $(
-                pool.sequence.push($x);
-            )*
-            pool
-        }
-    };
-}
-
-pub (crate) use make_pool;
 
 #[cfg(test)]
 mod tests {
@@ -734,45 +551,9 @@ mod tests {
     }
 
     #[test]
-    fn test_pool_can_pay_for() {
-        let one_of_each_color = Pool { sequence: vec![ BLACK, BLUE, GREEN, RED, WHITE ] };
-        let green_plus_2 = Pool { sequence: vec![ COLORLESS, COLORLESS, GREEN ] };
-        let black_plus_1 = Pool { sequence: vec![ COLORLESS, BLACK ] };
-        let red_white_and_2 = Pool { sequence: vec![ COLORLESS, COLORLESS, RED, WHITE ] };
-        let colorless_times_5 = Pool { sequence: vec![ COLORLESS, COLORLESS, COLORLESS, COLORLESS, COLORLESS ] };
-
-        assert!(one_of_each_color.can_pay_for(&green_plus_2));
-        assert!(one_of_each_color.can_pay_for(&one_of_each_color));
-        assert!(one_of_each_color.can_pay_for(&black_plus_1));
-        assert!(one_of_each_color.can_pay_for(&red_white_and_2));
-        assert!(one_of_each_color.can_pay_for(&colorless_times_5));
-
-        assert!(!one_of_each_color.can_pay_for(&Pool { sequence: vec![ BLACK, BLACK ] }));
-        assert!(!one_of_each_color.can_pay_for(&Pool { sequence: vec![ BLUE, BLUE ] }));
-        assert!(!one_of_each_color.can_pay_for(&Pool { sequence: vec![ GREEN, GREEN ] }));
-        assert!(!one_of_each_color.can_pay_for(&Pool { sequence: vec![ RED, RED ] }));
-        assert!(!one_of_each_color.can_pay_for(&Pool { sequence: vec![ WHITE, WHITE ] }));
-
-        let rakdos = Pool { sequence: vec![ Mana::make_dual(Color::Red, Color::Black) ] };
-        assert!(rakdos.can_pay_for(&Pool { sequence: vec![ BLACK] }));
-        assert!(!rakdos.can_pay_for(&Pool { sequence: vec![ BLUE ] }));
-        assert!(!rakdos.can_pay_for(&Pool { sequence: vec![ GREEN ] }));
-        assert!(rakdos.can_pay_for(&Pool { sequence: vec![ RED ] }));
-        assert!(!rakdos.can_pay_for(&Pool { sequence: vec![ WHITE ] }));
-
-        let two_of_each_color = Pool { sequence: vec![ BLACK, BLUE, GREEN, RED, WHITE, BLACK, BLUE, GREEN, RED, WHITE ]};
-        let freaky_cost_1 = Pool { sequence: vec![ GREEN, GREEN, RED, RED, WHITE, WHITE, BLUE, COLORLESS, COLORLESS, BLUE ]};
-        assert!(two_of_each_color.can_pay_for(&freaky_cost_1));
-    }
-
-    #[test]
-    fn test_make_pool() {
-        let one_of_each_color = make_pool![ BLACK, BLUE, GREEN, RED, WHITE ];
-        assert_eq!(one_of_each_color.sequence[0], BLACK);
-        assert_eq!(one_of_each_color.sequence[1], BLUE);
-        assert_eq!(one_of_each_color.sequence[2], GREEN);
-        assert_eq!(one_of_each_color.sequence[3], RED);
-        assert_eq!(one_of_each_color.sequence[4], WHITE);
+    fn test_manapool_display() {
+        let one_of_each_color = ManaPool::new_from_sequence(&vec![BLACK, BLUE, GREEN, RED, WHITE, COLORLESS, COLORLESS, COLORLESS]);
+        println!(" - one of each: {}", one_of_each_color);
     }
 
     #[test]

@@ -158,8 +158,13 @@ impl PipCounts {
         }
     }
 
-    pub fn count_in_pool(&mut self, pool : &mana::Pool) {
-        for m in pool.sequence.iter() {
+    pub fn count_in_pool(&mut self, pool : &mana::ManaPool) {
+        self.black += pool.black as f32;
+        self.blue += pool.blue as f32;
+        self.green += pool.green as f32;
+        self.red += pool.red as f32;
+        self.white += pool.white as f32;
+        for m in pool.multi.iter().flatten() {
             self.count_in_mana(&m);
         }
     }
