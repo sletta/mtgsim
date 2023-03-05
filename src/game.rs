@@ -1,6 +1,7 @@
 use crate::zone::*;
 use crate::card::*;
 use crate::mana::*;
+use itertools::Itertools;
 // use rand::Rng;
 // use rand::distributions::{Distribution, Uniform};
 
@@ -504,8 +505,9 @@ impl<'db, 'game> Turn<'db, 'game> {
     }
 
     pub fn try_to_empty_hand(&mut self) -> bool {
-        let mut candidates : Vec<&Card> = self.game.hand.cards.iter().filter(|card| {
-            if card.data.abilities.is_some() {
+        let mut candidates : Vec<Card> = self.game.hand.cards.iter().filter(|card| {
+            if card.is_type(Types::Land)
+                || card.data.abilities.is_some() {
                 return false;
             }
             if let Some(cost) = &card.data.mana_cost {
@@ -514,14 +516,48 @@ impl<'db, 'game> Turn<'db, 'game> {
                 }
             }
             return true;
-        }).collect();
+        }).map(|c| c.clone()).collect();
         if candidates.is_empty() {
             return false;
         }
+        // candidates.sort_by(|a, b| a.data.cmc.cmp(&b.data.cmc));
         candidates.sort_by(|a, b| b.data.cmc.cmp(&a.data.cmc));
         if self.game.verbose {
             for card in &candidates {
                 println!(" - other spell candidates: {}", card);
+            }
+        }
+
+        // try to find "the perfect match.."
+        if candidates.len() <= 5 && false {
+            for perm in candidates.iter().permutations(candidates.len()) {
+                let mut cost = self.mana_spent.clone();
+
+                let mut id : Option<u32> = None;
+
+                for card in &perm {
+                    if let Some(casting_cost) = &card.data.mana_cost {
+                        cost.add_pool(&casting_cost);
+                        if !self.mana_pool.can_pay_for(&cost) {
+                            break;
+                        }
+                        if cost.cmc() == self.mana_pool.cmc() {
+                            id = Some(card.id);
+                            break;
+                        }
+                    }
+                }
+
+                if let Some(last_id_in_permutation) = id {
+                    for card in perm {
+                        self.turn_stats.cards_played += 1;
+                        let card_in_hand = self.game.hand.take(card.id).unwrap();
+                        self.play_card(card_in_hand.clone());
+                        if card.id == last_id_in_permutation {
+                            return true;
+                        }
+                    }
+                }
             }
         }
 

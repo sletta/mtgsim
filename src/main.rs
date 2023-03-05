@@ -189,7 +189,7 @@ fn show_statistics(stats: &Vec<game::GameStats>, settings: &game::Settings) {
         }
         mana_effectiveness /= stats.len() as f32;
 
-        println!(" - turn #{:2}: cards(drawn={:.1}, played={:.1} in-hand={:.1}), lands(played={:.2}, cheated={:.1}), mana(spent={:.2} total={:.2}, effectiveness={:.1})",
+        println!(" - turn #{:2}: cards(drawn={:.1}, played={:.1} in-hand={:.1}), lands(played={:.2}, cheated={:.1}), mana(spent={:.2} total={:.2}, effectiveness={:.2})",
                 round + 1,
                 cards_drawn,
                 cards_played,
