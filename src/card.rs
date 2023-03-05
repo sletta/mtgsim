@@ -123,9 +123,9 @@ pub enum Cost {
     None,
     Tap,
     #[allow(dead_code)] Sacrifice,
-    #[allow(dead_code)] Mana(ManaPool),
+    Mana(ManaPool),
     TapSacrifice,
-    #[allow(dead_code)] TapMana(ManaPool),
+    TapMana(ManaPool),
     TapManaSacrifice(ManaPool),
 }
 
@@ -463,8 +463,19 @@ impl Effect {
             _ => false
         }
     }
+    pub fn is_draw(&self) -> bool {
+        match self {
+            Effect::Draw(_) => true,
+            _ => false
+        }
+    }
+    pub fn is_fetch_land(&self) -> bool {
+        match self {
+            Effect::FetchLand{to_hand: _, to_battlefield: _} => true,
+            _ => false
+        }
+    }
 }
-
 
 #[cfg(test)]
 mod tests {

@@ -28,7 +28,15 @@
         "trigger": "activated",
         "effect": { "type": "land-fetch", "to-battlefield": [ "basic land", "basic land" ] }
     } ] },
-{   "name": "Bonders' Enclave",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
+{   "name": "Bonders' Enclave",             "abilities": [ {
+        "cost": "tap",
+        "trigger": "activated",
+        "effect": { "type": "mana", "produce": "{C}" }
+    }, {
+        "cost": { "type": "tap-mana", "mana": "{C}{C}{C}" },
+        "trigger": "activated",
+        "effect": { "type": "draw", "count": 1 }
+    } ] },
 {   "name": "Evolving Wilds",               "cost": "tap-sacrifice", "trigger": "activated", "effect": { "type": "land-fetch", "to-battlefield": "basic land" } },
 {   "name": "Guildless Commons",            "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
 {   "name": "High Market",                  "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
@@ -44,7 +52,15 @@
     } ] },
 {   "name": "Temple of the False God",      "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
 {   "name": "Terramorphic Expanse",         "cost": "tap-sacrifice", "trigger": "activated", "effect": { "type": "land-fetch", "to-battlefield": "basic land" } },
-{   "name": "War Room",                     "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
+{   "name": "War Room",                     "abilities": [ {
+        "cost": "tap",
+        "trigger": "activated",
+        "effect": { "type": "mana", "produce": "{C}" }
+    }, {
+        "cost": { "type": "tap-mana", "mana": "{C}{C}{C}" },
+        "trigger": "activated",
+        "effect": { "type": "draw", "count": 1 }
+    } ] },
 
 
 {   "comment": "Golgari Lands:" },
@@ -58,9 +74,29 @@
 {   "name": "Command Tower ",               "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
 
 
+{   "comment": "Draw spells" },
+{   "name": "Armorcraft Judge",             "trigger": "cast", "effect": { "type": "draw", "count": [1, 2, 2, 3, 3, 3, 4, 6] } },
+{   "name": "Inspiring Call",               "trigger": "cast", "effect": { "type": "draw", "count": [1, 2, 2, 3, 3, 3, 4, 6] } },
+
+
+{   "comment": "Draw spells (recurring)" },
+{   "name": "Elemental Bond",               "trigger": "upkeep", "effect": { "type": "draw", "count": [0, 1, 1, 1, 2, 3] } },
+{   "name": "Garruk's Uprising",            "trigger": "upkeep", "effect": { "type": "draw", "count": [0, 1, 1, 1, 2, 3] } },
+{   "name": "Midnight Oil",                 "trigger": "upkeep", "effect": { "type": "draw", "count": 1 } },
+
+
+{   "comment": "Draw spells (activated)" },
+{   "name": "Mask of Griselbrand",
+        "trigger": "activated",
+        "cost": { "type": "mana", "mana": "{C}{C}{C}" },
+        "availability": 0.33,
+        "effect": { "type": "draw", "count": [2, 3, 4, 7] } },
+{   "name": "Oracle's Vault",               "trigger": "activated", "availability": 0.33, "cost": "tap", "effect": { "type": "draw", "count": 1 } },
+
+
 {   "comment": "Ramp (rocks)" },
 {   "name": "Commander's Sphere",           "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
-{   "name": "Pyramid of the Pantheon",      "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}{B/G/R/W/U}{B/G/R/W/U}", "availability": 0.25 } },
+{   "name": "Pyramid of the Pantheon",      "cost": "tap", "trigger": "activated", "availability": 0.25, "effect": { "type": "mana", "produce": "{B/G/R/W/U}{B/G/R/W/U}{B/G/R/W/U}" } },
 {   "name": "Replicating Ring",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
 {   "name": "Sol Ring",                     "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}{C}" } },
 
