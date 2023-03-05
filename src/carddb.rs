@@ -114,13 +114,6 @@ fn parse_effect_draw(object: &json::object::Object) -> Result<card::Effect, Stri
     return Err("failed to parse 'draw' effect!".to_string());
 }
 
-fn parse_effect_mana(object : &json::object::Object) -> Result<card::Effect, String> {
-    match object["produce"].as_str() {
-        Some(string) => Ok(card::Effect::ProduceMana(mana::ManaPool::new_from_string(string)?)),
-        None => Err("invalid 'mana::produce' value".to_string())
-    }
-}
-
 fn parse_effect_land_limit(object: &json::object::Object) -> Result<card::Effect, String> {
     if let Some(increase) = &object["increase"].as_u32() {
         return Ok(card::Effect::LandLimit(increase.clone()));

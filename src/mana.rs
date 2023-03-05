@@ -89,17 +89,16 @@ impl std::fmt::Display for Mana {
 }
 
 impl Mana {
-    #[allow(dead_code)]
     pub fn new() -> Self {
         return COLORLESS.clone();
     }
 
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub fn make_mono(a : Color) -> Self {
         return Mana { colors: BitFlags::empty() | a };
     }
 
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub fn make_dual(a : Color, b : Color) -> Self {
         return Mana { colors: a | b };
     }
@@ -131,6 +130,7 @@ impl Mana {
         return self.colors.exactly_one() != None;
     }
 
+    #[cfg(test)]
     pub fn can_pay_for(&self, other : &Mana) -> bool {
         return other.is_colorless() || self.colors.intersects(other.colors)
     }
@@ -139,16 +139,9 @@ impl Mana {
         return self.colors.contains(color);
     }
 
+    #[cfg(test)]
     pub fn can_pay_for_exactly(&self, other : &Mana) -> bool {
         return self.colors == other.colors && (self.is_colorless() || self.is_monocolor());
-    }
-
-    pub fn unite(&mut self, other : &Mana) {
-        self.colors |= other.colors;
-    }
-
-    pub fn subtract(&mut self, other : &Mana) {
-        self.colors.remove(other.colors);
     }
 
     pub fn color_count(&self) -> u32 {
@@ -190,6 +183,7 @@ impl ManaPool {
         }
     }
 
+    #[cfg(test)]
     pub fn new_from_sequence(s: &Vec<Mana>) -> Self {
         let mut pool = ManaPool::new();
         s.iter().for_each(|m| pool.add_mana(m));

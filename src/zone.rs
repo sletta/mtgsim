@@ -31,6 +31,7 @@ impl<'db> Zone<'db> {
         self.cards.clear();
     }
 
+    #[allow(dead_code)]
     pub fn contains(&self, card: &Card<'db>) -> bool {
         return self.cards.iter().find(|c| c.id == card.id).is_some();
     }
@@ -101,19 +102,6 @@ impl<'db> Zone<'db> {
             i += 1;
         }
         return None;
-    }
-
-    pub fn find_produced_colors(&self) -> mana::Mana {
-        let mut colors_in_zone = mana::Mana::new();
-        self.cards.iter().for_each(|c| {
-            if c.is_type(Types::Land) {
-                match &c.data.produced_mana {
-                    Some(colors) => colors_in_zone.unite(&colors),
-                    None => { }
-                }
-            }
-        });
-        return colors_in_zone;
     }
 
     pub fn count_pips_in_mana_costs(&self) -> PipCounts {

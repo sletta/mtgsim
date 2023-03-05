@@ -19,7 +19,6 @@
 
 
 {   "comment": "Colorless Lands:" },
-
 {   "name": "Blighted Woodland",            "abilities": [ {
         "cost": "tap",
         "trigger": "activated",
@@ -68,8 +67,8 @@
 
 {   "comment": "Ramp (spells)" },
 {   "name": "Cultivate",                    "trigger": "cast", "effect": { "type": "land-fetch", "to-hand": "basic land", "to-battlefield": "basic land" } },
+{   "name": "Expand the Sphere",            "trigger": "cast", "effect": { "type": "land-fetch", "to-battlefield": "basic land" } },
 {   "name": "Far Wanderings",               "trigger": "cast", "effect": { "type": "land-fetch", "to-battlefield": "basic land" } },
-{   "name": "Vastwood Surge",               "trigger": "cast", "effect": { "type": "land-fetch", "to-battlefield": [ "basic land", "basic land" ] } },
 {   "name": "Scale the Heights",            "abilities": [ {
         "trigger": "cast",
         "effect": { "type": "draw", "count": 1 }
@@ -77,9 +76,13 @@
         "trigger": "cast",
         "effect": { "type": "land-limit", "increase": 1 }
     } ] },
+{   "name": "Thirsting Roots",              "trigger": "cast", "effect": { "type": "land-fetch", "to-hand": "basic land" } },
+{   "name": "Vastwood Surge",               "trigger": "cast", "effect": { "type": "land-fetch", "to-battlefield": [ "basic land", "basic land" ] } },
 
-{   "comment": "Ramp (other)" },
-{   "name": "Black Market",     "trigger": "upkeep",    "availability": 0.25,    "effect": { "type": "mana", "produce": "{B}{B}{B}{B}{B}{B}{B}{B}" } },
+
+{   "comment": "Ramp (other permanents)" },
+{   "name": "Black Market",         "trigger": "upkeep",    "availability": 0.33,    "effect": { "type": "mana", "produce": "{B}{B}{B}{B}{B}{B}{B}{B}" } },
+{   "name": "Path of Discovery",    "trigger": "upkeep",    "availability": 0.33,    "effect": { "type": "land-fetch", "to-hand": "basic land" } },
 
 
 {   "comment": "Various" },

@@ -22,8 +22,6 @@ fn read_deck_list(file_name : &str) -> Result<Vec<DeckListEntry>, String> {
     for maybe_line in lines {
         let line = maybe_line.unwrap().clone();
         let captures = re.captures(&line).unwrap();
-        // println!(" - {:?}", captures);
-        // if let Some(captures) = re.captures(line) {
         let count = captures.get(1).unwrap().as_str().parse::<u32>().unwrap();
         let name = captures.get(2).unwrap().as_str();
         deck_list.push(DeckListEntry {
@@ -91,9 +89,6 @@ fn main() {
         }
     }
 
-    let bullshit = vec![1, 2, 3, 4, 5, 6, 8];
-    bullshit.iter().for_each(|n| println!("{}", n));
-
     let mut found_commander = false;
 
     deck_list.iter().for_each(|e| match db.load(&e.name) {
@@ -158,10 +153,12 @@ fn show_statistics(stats: &Vec<game::GameStats>, settings: &game::Settings) {
     for round in 0..settings.turn_count {
         let i : usize = round as usize;
         let lands_played = average(stats.iter().map(|s| s.turns_stats[i].lands_played).sum(), stats.len());
+        let cards_drawn = average(stats.iter().map(|s| s.turns_stats[i].cards_drawn).sum(), stats.len());
         let mana_available = average(stats.iter().map(|s| s.turns_stats[i].mana_available).sum(), stats.len());
         let mana_spent = average(stats.iter().map(|s| s.turns_stats[i].mana_spent).sum(), stats.len());
-        println!(" - turn #{:2}: lands played: {:.2}; mana spent: {:.2} of total {:.2}",
+        println!(" - turn #{:2}: cards drawn: {:.2}, lands played: {:.2}; mana spent: {:.2} of total {:.2}",
                 round + 1,
+                cards_drawn,
                 lands_played,
                 mana_spent,
                 mana_available);

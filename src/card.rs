@@ -122,10 +122,10 @@ pub enum Trigger {
 pub enum Cost {
     None,
     Tap,
-    Sacrifice,
-    Mana(ManaPool),
+    #[allow(dead_code)] Sacrifice,
+    #[allow(dead_code)] Mana(ManaPool),
     TapSacrifice,
-    TapMana(ManaPool),
+    #[allow(dead_code)] TapMana(ManaPool),
     TapManaSacrifice(ManaPool),
 }
 
@@ -204,26 +204,6 @@ impl<'db> Card<'db> {
 
     pub fn is_type(&self, t : Types) -> bool {
         return self.data.types.contains(t);
-    }
-
-    pub fn is_ramp(&self) -> bool {
-        match &self.data.abilities {
-            Some(abilities) => for ability in abilities {
-                match &ability.effect {
-                    Effect::ProduceMana(_) => {
-                        if self.is_type(Types::Land) {
-                            continue;
-                        } else {
-                            return true;
-                        }
-                    },
-                    Effect::FetchLand{to_hand: _, to_battlefield: _} => return true,
-                    _ => continue,
-                }
-            },
-            None => (),
-        }
-        return false;
     }
 
     pub fn produced_mana(&self) -> Option<ManaPool> {
@@ -422,8 +402,13 @@ impl CardData {
     }
 }
 
-
 impl Cost {
+    pub fn is_none(&self) -> bool {
+        match self {
+            Cost::None => true,
+            _ => false
+        }
+    }
     pub fn is_tap(&self) -> bool {
         match self {
             Cost::Tap => true,
@@ -432,7 +417,6 @@ impl Cost {
             _ => false
         }
     }
-
     pub fn is_mana(&self) -> Option<&ManaPool> {
         match self {
             Cost::Mana(pool) => Some(pool),
@@ -441,7 +425,6 @@ impl Cost {
             _ => None
         }
     }
-
     pub fn is_sacrifice(&self) -> bool {
         match self {
             Cost::Sacrifice => true,
@@ -450,8 +433,38 @@ impl Cost {
             _ => false
         }
     }
-
 }
+
+impl Trigger {
+    pub fn is_cast(&self) -> bool {
+        match self {
+            Trigger::Cast => true,
+            _ => false
+        }
+    }
+    pub fn is_activated(&self) -> bool {
+        match self {
+            Trigger::Activated => true,
+            _ => false
+        }
+    }
+    pub fn is_upkeep(&self) -> bool {
+        match self {
+            Trigger::Upkeep => true,
+            _ => false
+        }
+    }
+}
+
+impl Effect {
+    pub fn is_produce_mana(&self) -> bool {
+        match self {
+            Effect::ProduceMana(_) => true,
+            _ => false
+        }
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
