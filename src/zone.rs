@@ -8,13 +8,13 @@ pub struct Zone<'db> {
     pub cards: Vec<Card<'db>>
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PipCounts {
-    black: f32,
-    blue: f32,
-    green: f32,
-    red: f32,
-    white: f32,
+    pub black: f32,
+    pub blue: f32,
+    pub green: f32,
+    pub red: f32,
+    pub white: f32,
 }
 
 impl<'db> Zone<'db> {

@@ -97,6 +97,26 @@ impl<'db> Game<'db> {
     fn draw_and_mulligan(&mut self, settings: &Settings) {
         match settings.mulligan {
             MulliganType::ThreeLands => {
+                let pips = self.library.count_pips_in_mana_costs();
+                let mut npips = pips.clone();
+                npips.normalize();
+                let color_average = (npips.black + npips.blue + npips.green + npips.red + npips.white) / 5.0;
+                let mut primary_colors : Vec<Color> = Vec::new();
+                if npips.black > color_average { primary_colors.push(Color::Black); }
+                if npips.blue > color_average { primary_colors.push(Color::Blue); }
+                if npips.green > color_average { primary_colors.push(Color::Green); }
+                if npips.red > color_average { primary_colors.push(Color::Red); }
+                if npips.white > color_average { primary_colors.push(Color::White); }
+                if self.verbose {
+                    println!("Primary deck colors: {:?}", primary_colors);
+                    println!("Distribution of pips:");
+                    println!(" - black ..: {:.2} / {:.2}", pips.black, npips.black);
+                    println!(" - green ..: {:.2} / {:.2}", pips.green, npips.green);
+                    println!(" - red ....: {:.2} / {:.2}", pips.red, npips.red);
+                    println!(" - blue ...: {:.2} / {:.2}", pips.blue, npips.blue);
+                    println!(" - white ..: {:.2} / {:.2}", pips.white, npips.white);
+                }
+
                 let original_library = self.library.clone();
                 self.library.shuffle();
                 self.draw_cards(7);
@@ -348,22 +368,11 @@ impl<'db, 'game> Turn<'db, 'game> {
 
         sort_cards_on_colors_produced(&mut lands_in_hand);
 
-        let mut pips_in_hand = self.game.hand.count_pips_in_mana_costs();
-        let has_pips_in_hand = pips_in_hand.normalize();
-        let mut pips_in_mana_pool = PipCounts::new();
-        pips_in_mana_pool.count_in_pool(&self.mana_pool);
-        let has_pips_in_mana_pool = pips_in_mana_pool.normalize();
-
-        if has_pips_in_hand {
-            let wanted_color = match has_pips_in_mana_pool {
-                true => pips_in_hand.prioritized_delta(&pips_in_mana_pool),
-                false => pips_in_hand.prioritized_delta(&PipCounts::new())
-            };
-
+        let maybe_wanted_color = Self::evaluate_desired_mana_colors(&self.game.hand, &self.mana_pool);
+        if let Some(wanted_color) = maybe_wanted_color {
             if self.game.verbose && wanted_color.len() > 0 {
                 println!(" - land preference: {:?}", wanted_color[0]);
             }
-
             for color in wanted_color {
                 for land in &lands_in_hand {
                     match &land.data.produced_mana {
@@ -425,7 +434,7 @@ impl<'db, 'game> Turn<'db, 'game> {
         return true;
     }
 
-    pub fn try_to_play_ramp_spell(&mut self) -> bool {
+    fn try_to_play_ramp_spell(&mut self) -> bool {
         let mut candidates = self.find_spells_in_hand(|ability| {
             match &ability.effect {
                 Effect::FetchLand{to_hand: _, to_battlefield: _} => true,
@@ -449,7 +458,7 @@ impl<'db, 'game> Turn<'db, 'game> {
         return true;
     }
 
-    pub fn try_to_activate_draw_spell(&mut self) -> bool {
+    fn try_to_activate_draw_spell(&mut self) -> bool {
         let mut abilities = self.find_abilities_on_battlefield(|ability|
             ability.trigger.is_activated()
             && ability.availability >= rand::random::<f32>()
@@ -485,7 +494,7 @@ impl<'db, 'game> Turn<'db, 'game> {
         return true;
     }
 
-    pub fn try_to_play_draw_spell(&mut self) -> bool {
+    fn try_to_play_draw_spell(&mut self) -> bool {
         let mut candidates = self.find_spells_in_hand(|ability|
             ability.effect.is_draw()
             && ability.availability >= rand::random::<f32>()
@@ -504,7 +513,7 @@ impl<'db, 'game> Turn<'db, 'game> {
         return true;
     }
 
-    pub fn try_to_empty_hand(&mut self) -> bool {
+    fn try_to_empty_hand(&mut self) -> bool {
         let mut candidates : Vec<Card> = self.game.hand.cards.iter().filter(|card| {
             if card.is_type(Types::Land)
                 || card.data.abilities.is_some() {
@@ -566,7 +575,7 @@ impl<'db, 'game> Turn<'db, 'game> {
         return true;
     }
 
-    pub fn play_card(&mut self, mut card: Card<'db>) {
+    fn play_card(&mut self, mut card: Card<'db>) {
         if card.data.enters_tapped {
             card.tapped = true;
         }
@@ -705,6 +714,22 @@ impl<'db, 'game> Turn<'db, 'game> {
         self.game.library.shuffle();
     }
 
+    fn evaluate_desired_mana_colors(zone: &Zone, mana_pool: &ManaPool) -> Option<Vec<Color>> {
+        let mut pips_in_zone = zone.count_pips_in_mana_costs();
+        let has_pips_in_zone = pips_in_zone.normalize();
+        let mut pips_in_mana_pool = PipCounts::new();
+        pips_in_mana_pool.count_in_pool(mana_pool);
+        let has_pips_in_mana_pool = pips_in_mana_pool.normalize();
+
+        if has_pips_in_zone {
+            return Some(match has_pips_in_mana_pool {
+                true => pips_in_zone.prioritized_delta(&pips_in_mana_pool),
+                false => pips_in_zone.prioritized_delta(&PipCounts::new())
+            });
+        }
+
+        return None;
+    }
 }
 
 fn sort_cards_on_colors_produced(cards : &mut Vec<Card>) {
