@@ -58,6 +58,7 @@ pub struct GameStats {
     pub mulligan_count: u32,
     pub turn_commander_played : u32,
     pub turns_stats : Vec<TurnStats>,
+    pub out_of_cards : bool,
 }
 
 impl<'db> Game<'db> {
@@ -72,7 +73,8 @@ impl<'db> Game<'db> {
             game_stats : GameStats {
                 mulligan_count: 0,
                 turn_commander_played: 0,
-                turns_stats: Vec::new()
+                turns_stats: Vec::new(),
+                out_of_cards: false
             },
         };
     }
@@ -86,51 +88,72 @@ impl<'db> Game<'db> {
 
     pub fn draw_cards(&mut self, count : u32) {
         for _i in 0..count {
-            let card = self.library.draw().expect("library is out of cards!!!");
-            if self.verbose {
-                println!(" - draw card: {}", card);
+            match self.library.draw() {
+                Some(card) => {
+                    if self.verbose {
+                        println!(" - draw card: {}", card);
+                    }
+                    self.hand.add(card);
+                },
+                None => self.game_stats.out_of_cards = true
             }
-            self.hand.add(card);
         }
     }
 
     fn draw_and_mulligan(&mut self, settings: &Settings) {
+        let pips = self.library.count_pips_in_mana_costs();
+        let mut npips = pips.clone();
+        npips.normalize();
+        let color_average = (npips.black + npips.blue + npips.green + npips.red + npips.white) / 5.0;
+        let mut primary_colors : Vec<Color> = Vec::new();
+        if npips.black > color_average { primary_colors.push(Color::Black); }
+        if npips.blue > color_average { primary_colors.push(Color::Blue); }
+        if npips.green > color_average { primary_colors.push(Color::Green); }
+        if npips.red > color_average { primary_colors.push(Color::Red); }
+        if npips.white > color_average { primary_colors.push(Color::White); }
+        if self.verbose {
+            println!("Primary deck colors: {:?}", primary_colors);
+            println!("Distribution of pips:");
+            println!(" - black ..: {:.2} / {:.2}", pips.black, npips.black);
+            println!(" - green ..: {:.2} / {:.2}", pips.green, npips.green);
+            println!(" - red ....: {:.2} / {:.2}", pips.red, npips.red);
+            println!(" - blue ...: {:.2} / {:.2}", pips.blue, npips.blue);
+            println!(" - white ..: {:.2} / {:.2}", pips.white, npips.white);
+        }
         match settings.mulligan {
             MulliganType::ThreeLands => {
-                let pips = self.library.count_pips_in_mana_costs();
-                let mut npips = pips.clone();
-                npips.normalize();
-                let color_average = (npips.black + npips.blue + npips.green + npips.red + npips.white) / 5.0;
-                let mut primary_colors : Vec<Color> = Vec::new();
-                if npips.black > color_average { primary_colors.push(Color::Black); }
-                if npips.blue > color_average { primary_colors.push(Color::Blue); }
-                if npips.green > color_average { primary_colors.push(Color::Green); }
-                if npips.red > color_average { primary_colors.push(Color::Red); }
-                if npips.white > color_average { primary_colors.push(Color::White); }
-                if self.verbose {
-                    println!("Primary deck colors: {:?}", primary_colors);
-                    println!("Distribution of pips:");
-                    println!(" - black ..: {:.2} / {:.2}", pips.black, npips.black);
-                    println!(" - green ..: {:.2} / {:.2}", pips.green, npips.green);
-                    println!(" - red ....: {:.2} / {:.2}", pips.red, npips.red);
-                    println!(" - blue ...: {:.2} / {:.2}", pips.blue, npips.blue);
-                    println!(" - white ..: {:.2} / {:.2}", pips.white, npips.white);
+                fn is_hand_decent(hand: &Zone, colors: &Vec<Color>, verbose: bool) -> bool {
+                    let cards = hand.query(Types::Land);
+                    if cards.len() < 3 {
+                        if verbose {
+                            println!("Not enough lands in hand (want 3), doing a mulligan");
+                        }
+                        return false;
+                    }
+                    for color in colors.iter().take(2) {
+                        let can_produce = cards.iter().any(|card| card.data.produced_mana.as_ref().map_or(false, |mana| mana.contains(*color)));
+                        if !can_produce {
+                            if verbose {
+                                println!("Not access to enough colors, doing a mulligan..");
+                            }
+                            return false;
+                        }
+                    }
+                    return true;
                 }
-
+                let max_mulligans = 10;
+                let mut mulligan_count = 0;
                 let original_library = self.library.clone();
                 self.library.shuffle();
                 self.draw_cards(7);
-                while self.hand.query(Types::Land).len() < 3 {
-                    if self.verbose {
-                        println!("Not enough lands in hand, doing a mulligan...");
-                        // self.hand.dump();
-                    }
+                while !is_hand_decent(&self.hand, &primary_colors, self.verbose) && mulligan_count < max_mulligans {
                     self.library = original_library.clone();
                     self.library.shuffle();
                     self.hand.clear();
                     self.draw_cards(7);
-                    self.game_stats.mulligan_count += 1;
+                    mulligan_count += 1;
                 }
+                self.game_stats.mulligan_count += mulligan_count;
             },
             MulliganType::None => {
                 self.library.shuffle();
@@ -244,8 +267,8 @@ impl<'db, 'game> Turn<'db, 'game> {
             || self.try_to_play_commander()
             || self.try_to_activate_ramp_ability()
             || self.try_to_play_ramp_spell()
-            || self.try_to_activate_draw_spell()
-            || self.try_to_play_draw_spell()
+            || ((self.game.hand.size() <= 5 && self.game.library.size() > 10)
+                && (self.try_to_activate_draw_ability() || self.try_to_play_draw_spell()))
             || self.try_to_empty_hand()
             {
             if self.game.verbose {
@@ -458,7 +481,7 @@ impl<'db, 'game> Turn<'db, 'game> {
         return true;
     }
 
-    fn try_to_activate_draw_spell(&mut self) -> bool {
+    fn try_to_activate_draw_ability(&mut self) -> bool {
         let mut abilities = self.find_abilities_on_battlefield(|ability|
             ability.trigger.is_activated()
             && ability.availability >= rand::random::<f32>()

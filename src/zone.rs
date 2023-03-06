@@ -50,6 +50,9 @@ impl<'db> Zone<'db> {
     }
 
     pub fn shuffle(&mut self) {
+        if self.cards.is_empty() {
+            return;
+        }
         let mut random_generator = rand::thread_rng();
         let random = Uniform::from(0..self.cards.len());
         for i in 0..self.cards.len() {

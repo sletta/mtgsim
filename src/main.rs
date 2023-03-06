@@ -157,6 +157,9 @@ fn show_statistics(stats: &Vec<game::GameStats>, settings: &game::Settings) {
     let draw_curve = average(stats.iter().map(|s| s.turns_stats.iter()).flatten().map(|s| s.cards_drawn).sum(), total_turn_count);
     println!(" - deck speed: {:.2} cards / round (average)", draw_curve);
 
+    let ratio_milled_out = stats.iter().map(|s| s.out_of_cards as u32 as f32).sum::<f32>() / stats.len() as f32;
+    println!(" - milled out: {:.3}", ratio_milled_out);
+
     let mut mana_available_curve : f32 = 0.0;
     let mut mana_spending_curve : f32 = 0.0;
     for s in stats {
@@ -169,7 +172,6 @@ fn show_statistics(stats: &Vec<game::GameStats>, settings: &game::Settings) {
 
     println!(" - ramp curve: {:.2} mana / turns (average)", mana_available_curve);
     println!(" - mana spending curve: {:.2} mana / turns (average), effectiveness: {}", mana_spending_curve, mana_spending_curve / mana_available_curve);
-    // println!(" - {:.2} mana / turns (average)", mana_available_curve / total_turn_count as f32);
 
     for round in 0..settings.turn_count {
         let i : usize = round as usize;
@@ -182,12 +184,14 @@ fn show_statistics(stats: &Vec<game::GameStats>, settings: &game::Settings) {
         let mana_available = average(stats.iter().map(|s| s.turns_stats[i].mana_available).sum(), stats.len());
         let mana_spent = average(stats.iter().map(|s| s.turns_stats[i].mana_spent).sum(), stats.len());
 
-        let mut mana_effectiveness : f32 = 0.0;
-        for s in stats {
-            let turn_stats = &s.turns_stats[i];
-            mana_effectiveness += turn_stats.mana_spent as f32 / turn_stats.mana_available as f32;
-        }
-        mana_effectiveness /= stats.len() as f32;
+        let mut counted_effectiveness = 0.0;
+        let mana_effectiveness : f32 = stats.iter()
+            .map(|s| &s.turns_stats[i])
+            .filter(|ts| ts.mana_available > 0)
+            .map(|ts| {
+                counted_effectiveness += 1.0;
+                ts.mana_spent as f32 / ts.mana_available as f32
+            }).sum::<f32>() / counted_effectiveness;
 
         println!(" - turn #{:2}: cards(drawn={:.1}, played={:.1} in-hand={:.1}), lands(played={:.2}, cheated={:.1}), mana(spent={:.2} total={:.2}, effectiveness={:.2})",
                 round + 1,
