@@ -710,11 +710,16 @@ impl<'db, 'game> Turn<'db, 'game> {
     }
 
     fn fetch_lands(&mut self, types_to_hand: &Vec<String>, types_to_battlefield: &Vec<String>) {
+
+        // Prioritize up to three colors..
+        let mut wanted_iterator = Self::evaluate_desired_mana_colors(&self.game.hand, &self.mana_pool).into_iter().flatten().take(3);
+
         for type_to_hand in types_to_hand {
-            let maybe_card = self.game.library.take_land(type_to_hand);
+            let preference = wanted_iterator.next();
+            let maybe_card = self.game.library.take_land(type_to_hand, &preference);
             if let Some(card) = maybe_card {
                 if self.game.verbose {
-                    println!(" - fetch to hand: {}", card);
+                    println!(" - fetch to hand: {}, type={}, preference={:?}", card, type_to_hand, preference);
                 }
                 self.game.hand.add(card);
             } else if self.game.verbose {
@@ -722,12 +727,13 @@ impl<'db, 'game> Turn<'db, 'game> {
             }
         }
         for type_to_battlefield in types_to_battlefield {
-            let maybe_card = self.game.library.take_land(type_to_battlefield);
+            let preference = wanted_iterator.next();
+            let maybe_card = self.game.library.take_land(type_to_battlefield, &preference);
             if let Some(mut card) = maybe_card {
                 card.tapped = true;
                 self.turn_stats.lands_cheated += 1;
                 if self.game.verbose {
-                    println!(" - fetch to battlefield {}", card);
+                    println!(" - fetch to battlefield {}, type={}, preference={:?}", card, type_to_battlefield, preference);
                 }
                 self.game.battlefield.add(card);
             } else if self.game.verbose {

@@ -95,16 +95,26 @@ impl<'db> Zone<'db> {
         }).collect();
     }
 
-    pub fn take_land(&mut self, type_string : &str) -> Option<Card<'db>> {
+    pub fn take_land(&mut self, type_string: &str, desired_color: &Option<mana::Color>) -> Option<Card<'db>> {
         let lower_cased_type_string = type_string.to_lowercase();
-        let mut i = 0;
-        while i < self.cards.len() {
-            if self.cards[i].data.type_string.to_lowercase().contains(&lower_cased_type_string) {
-                return Some(self.cards.remove(i));
-            }
-            i += 1;
+        let mut index: Option<usize> = None;
+        if let Some(color) = desired_color {
+            index = self.cards
+                .iter()
+                .map(|card| card.data)
+                .position(|d|
+                    d.type_string.to_lowercase().contains(&lower_cased_type_string)
+                    && d.produced_mana.as_ref().map_or(false, |mana| mana.contains(*color))
+                );
         }
-        return None;
+        if index.is_none() {
+            index = self.cards
+                .iter()
+                .map(|card| card.data)
+                .position(|d| d.type_string.to_lowercase().contains(&lower_cased_type_string));
+        }
+
+        return index.map(|i| self.cards.remove(i));
     }
 
     pub fn count_pips_in_mana_costs(&self) -> PipCounts {
