@@ -108,7 +108,7 @@ impl Mana {
         return Mana { colors: a | b | c };
     }
 
-    pub fn set_from_string(&mut self, value : &str) {
+    pub fn set_from_string(&mut self, value : &str) -> Result<(), String> {
         match value {
             "C" => {
                 // do nothing..
@@ -118,8 +118,9 @@ impl Mana {
             "G" => self.colors |= Color::Green,
             "R" => self.colors |= Color::Red,
             "W" => self.colors |= Color::White,
-            _ => panic!("bad input, '{}'", value)
+            _ => return Err(format!("bad mana string '{}'", value)),
         }
+        Ok(())
     }
 
     pub fn is_colorless(&self) -> bool {
@@ -198,7 +199,7 @@ impl ManaPool {
             if value.contains("/") {
                 let mut mana = Mana::new();
                 for i in value.split('/') {
-                    mana.set_from_string(i);
+                    mana.set_from_string(i)?;
                 }
                 pool.add_mana(&mana);
                 continue;
@@ -295,7 +296,6 @@ impl ManaPool {
             let mut found = false;
             let self_multi : Vec<Mana> = self.multi.as_ref().into_iter().flatten().filter_map(|m| {
                 if !found && mana_to_remove.colors == m.colors {
-                    println!(" -- removing {:?} from {:?}", mana_to_remove, m);
                     found = true;
                     return None;
                 }

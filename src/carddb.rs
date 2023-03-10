@@ -41,6 +41,7 @@ fn parse_cost(object : &json::JsonValue) -> Result<card::Cost, String> {
     fn parse_cost_string(string : &str) -> Result<card::Cost, String> {
         match string {
             "tap" => Ok(card::Cost::Tap),
+            "sacrifice" => Ok(card::Cost::Sacrifice),
             "tap-sacrifice" => Ok(card::Cost::TapSacrifice),
             "none" => Ok(card::Cost::None),
             _ => Err("invalid 'cost' string!".to_string())
@@ -146,6 +147,8 @@ fn parse_availability(object : &json::JsonValue) -> f32 {
 }
 
 fn parse_ability(object : &json::JsonValue) -> Result<card::Ability, String> {
+    println!(" -- parsing ability: {:?}", object);
+
     return Ok(card::Ability {
         trigger: parse_trigger(object)?,
         cost : parse_cost(object)?,

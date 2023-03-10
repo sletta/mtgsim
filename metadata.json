@@ -1,24 +1,33 @@
 [ 
 
-{   "comment": "Basic Lands:" },
-{   "name": "Forest",   "cost": "tap",  "trigger": "activated",     "effect": { "type": "mana", "produce": "{G}" } },
-{   "name": "Island",   "cost": "tap",  "trigger": "activated",     "effect": { "type": "mana", "produce": "{U}" } },
-{   "name": "Mountain", "cost": "tap",  "trigger": "activated",     "effect": { "type": "mana", "produce": "{R}" } },
-{   "name": "Plains",   "cost": "tap",  "trigger": "activated",     "effect": { "type": "mana", "produce": "{W}" } },
-{   "name": "Swamp",    "cost": "tap",  "trigger": "activated",     "effect": { "type": "mana", "produce": "{B}" } },
-{   "name": "Wastes",   "cost": "tap",  "trigger": "activated",     "effect": { "type": "mana", "produce": "{C}" } },
+{   "comment": "Simple lands:" },
+{   "name": "Forest",   "cost":         "tap",  "trigger": "activated",     "effect": { "type": "mana", "produce": "{G}" } },
+{   "name": "Island",   "cost":         "tap",  "trigger": "activated",     "effect": { "type": "mana", "produce": "{U}" } },
+{   "name": "Mountain", "cost":         "tap",  "trigger": "activated",     "effect": { "type": "mana", "produce": "{R}" } },
+{   "name": "Plains",   "cost":         "tap",  "trigger": "activated",     "effect": { "type": "mana", "produce": "{W}" } },
+{   "name": "Swamp",    "cost":         "tap",  "trigger": "activated",     "effect": { "type": "mana", "produce": "{B}" } },
+{   "name": "Wastes",   "cost":         "tap",  "trigger": "activated",     "effect": { "type": "mana", "produce": "{C}" } },
+
+{   "name": "Castle Locthwain",         "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B}" } },
+
+{   "name": "The Hunter Maze",          "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{G}" } },
+{   "name": "Castle Garenbrig",         "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{G}" } },
+
+{   "name": "Cascading Cataracts",      "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
+{   "name": "Guildless Commons",        "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
+{   "name": "High Market",              "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
+{   "name": "Karn's Bastion",           "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
+{   "name": "Temple of the False God",  "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
+
+{   "name": "Temple of Malady",         "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G}" } },
+{   "name": "Foul Orchard",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G}" } },
+{   "name": "Jungle Hollow",            "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G}" } },
+
+{   "name": "Opal Palace",              "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
+{   "name": "Command Tower ",           "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
 
 
-{   "comment": "Black lands:" },
-{   "name": "Castle Locthwain",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B}" } },
-
-
-{   "comment": "Green lands:" },
-{   "name": "The Hunter Maze",              "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{G}" } },
-{   "name": "Castle Garenbrig",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{G}" } },
-
-
-{   "comment": "Colorless Lands:" },
+{   "comment": "More complex lands:" },
 {   "name": "Blighted Woodland",            "abilities": [ {
         "cost": "tap",
         "trigger": "activated",
@@ -38,9 +47,6 @@
         "effect": { "type": "draw", "count": 1 }
     } ] },
 {   "name": "Evolving Wilds",               "cost": "tap-sacrifice", "trigger": "activated", "effect": { "type": "land-fetch", "to-battlefield": "basic land" } },
-{   "name": "Guildless Commons",            "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
-{   "name": "High Market",                  "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
-{   "name": "Karn's Bastion",               "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
 {   "name": "Myriad Landscape",             "abilities": [ {
         "cost": "tap",
         "trigger": "activated",
@@ -50,7 +56,17 @@
         "trigger": "activated",
         "effect": { "type": "land-fetch", "to-battlefield": [ "basic land", "basic land" ] }
     } ] },
-{   "name": "Temple of the False God",      "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
+{   "name": "Arch of Orazca",               "abilities": [ {
+        "cost": "tap",
+        "trigger": "activated",
+        "effect": { "type": "mana", "produce": "{C}" }
+    }, {
+        "cost": { "type": "tap-mana", "mana": "{C}{C}{C}{C}{C}" },
+        "trigger": "activated",
+        "availability": "0.2",
+        "effect": { "type": "draw", "count": 1 }
+    } ] },
+
 {   "name": "Terramorphic Expanse",         "cost": "tap-sacrifice", "trigger": "activated", "effect": { "type": "land-fetch", "to-battlefield": "basic land" } },
 {   "name": "War Room",                     "abilities": [ {
         "cost": "tap",
@@ -63,20 +79,10 @@
     } ] },
 
 
-{   "comment": "Golgari Lands:" },
-{   "name": "Temple of Malady",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G}" } },
-{   "name": "Foul Orchard",                 "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G}" } },
-{   "name": "Jungle Hollow",                "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G}" } },
-
-
-{   "comment": "5-color lands:" },
-{   "name": "Opal Palace",                  "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
-{   "name": "Command Tower ",               "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
-
-
 {   "comment": "Draw spells" },
 {   "name": "Armorcraft Judge",             "trigger": "cast", "effect": { "type": "draw", "count": [1, 2, 2, 3, 3, 3, 4, 6] } },
 {   "name": "Inspiring Call",               "trigger": "cast", "effect": { "type": "draw", "count": [1, 2, 2, 3, 3, 3, 4, 6] } },
+{   "name": "Browbeat",                     "trigger": "cast", "effect": { "type": "draw", "count": [0, 3] } },
 
 
 {   "comment": "Draw spells (recurring)" },
@@ -94,11 +100,61 @@
 {   "name": "Oracle's Vault",               "trigger": "activated", "availability": 0.33, "cost": "tap", "effect": { "type": "draw", "count": 1 } },
 
 
-{   "comment": "Ramp (rocks)" },
-{   "name": "Commander's Sphere",           "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
-{   "name": "Pyramid of the Pantheon",      "cost": "tap", "trigger": "activated", "availability": 0.25, "effect": { "type": "mana", "produce": "{B/G/R/W/U}{B/G/R/W/U}{B/G/R/W/U}" } },
+{   "comment": "Ramp (simple rocks" },
+{   "name": "Arcane Signet",                "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
+{   "name": "Boros Signet",                 "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{R/W}" } },
 {   "name": "Replicating Ring",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
 {   "name": "Sol Ring",                     "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}{C}" } },
+{   "name": "Chandra, Torch of Defiance",   "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{R}{R}" } },
+
+
+{   "comment": "Ramp (less simple rocks)"},
+{   "name": "Boros Cluestone",
+    "abilities": [ {
+        "trigger": "activated",
+        "cost": "tap",
+        "effect": { "type": "mana", "produce": "{R/W}" }
+    }, {
+        "trigger": "activated",
+        "cost": { "type": "tap-mana-sacrifice", "mana": "{R}{W}" },
+        "effect": { "type": "draw", "count": 1 }
+    } ] },
+{   "name": "Boros Locket",
+    "abilities": [ {
+        "trigger": "activated",
+        "cost": "tap",
+        "mana": "{R/W}{R/W}{R/W}{R/W}",
+        "effect": { "type": "mana", "produce": "{R/W}" }
+    }, {
+        "trigger": "activated",
+        "cost": { "type": "tap-mana-sacrifice", "mana": "{R}{W}" },
+        "effect": { "type": "draw", "count": 1 }
+    } ] },
+{   "name": "Commander's Sphere",           "abilities": [ {
+        "trigger": "activated",
+        "cost": "tap",
+        "effect": { "type": "mana", "produce": "{B/G/R/W/U}" }
+    }, {
+        "trigger": "activated",
+        "cost": "sacrifice",
+        "availability": 0.2,
+        "effect": { "type": "draw", "count": 1 }
+    } ] },
+{   "name": "Dreamstone Hedron",
+    "abilities": [ {
+        "trigger": "activated",
+        "cost": "tap",
+        "effect": { "type": "mana", "produce": "{C}{C}{C}" }
+    }, {
+        "trigger": "activated",
+        "cost": { "type": "tap-mana-sacrifice", "mana": "{C}{C}{C}" },
+        "effect": { "type": "draw", "count": 3 }
+    } ] },
+{   "name": "Pyramid of the Pantheon",
+    "cost": "tap",
+    "trigger": "activated",
+    "availability": 0.25,
+    "effect": { "type": "mana", "produce": "{B/G/R/W/U}{B/G/R/W/U}{B/G/R/W/U}" } },
 
 
 {   "comment": "Ramp (spells)" },
@@ -119,7 +175,7 @@
 {   "comment": "Ramp (other permanents)" },
 {   "name": "Black Market",         "trigger": "upkeep",    "availability": 0.33,    "effect": { "type": "mana", "produce": "{B}{B}{B}{B}{B}{B}{B}{B}" } },
 {   "name": "Path of Discovery",    "trigger": "upkeep",    "availability": 0.33,    "effect": { "type": "land-fetch", "to-hand": "basic land" } },
-
+{   "name": "Caged Sun",            "trigger": "upkeep",    "availability": 1.0,     "effect": { "type": "mana", "produce": "{B/G/R/W/U}{B/G/R/W/U}{B/G/R/W/U}{B/G/R/W/U}{B/G/R/W/U}{B/G/R/W/U}" } },
 
 {   "comment": "Various" },
 

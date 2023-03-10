@@ -18,16 +18,20 @@ fn read_deck_list(file_name : &str) -> Result<Vec<DeckListEntry>, String> {
     let mut  deck_list : Vec<DeckListEntry> = Vec::new();
     let file = std::fs::File::open(file_name).unwrap();
     let lines = std::io::BufReader::new(file).lines();
-    let re = Regex::new(r"^(\d+)x\s+([\w\s',\-\\/]+)").unwrap();
+    let re = Regex::new(r"^(\d+)x?\s+([\w\s',\-\\/]+)").unwrap();
     for maybe_line in lines {
-        let line = maybe_line.unwrap().clone();
-        let captures = re.captures(&line).unwrap();
-        let count = captures.get(1).unwrap().as_str().parse::<u32>().unwrap();
-        let name = captures.get(2).unwrap().as_str();
-        deck_list.push(DeckListEntry {
-            count: count,
-            name: name.trim().to_lowercase()
-        } );
+        match maybe_line {
+            Err(_) => (),
+            Ok(line) => {
+                let captures = re.captures(&line).unwrap();
+                let count = captures.get(1).unwrap().as_str().parse::<u32>().unwrap();
+                let name = captures.get(2).unwrap().as_str();
+                deck_list.push(DeckListEntry {
+                    count: count,
+                    name: name.trim().to_lowercase()
+                });
+            }
+        }
     }
     return Ok(deck_list);
 }
