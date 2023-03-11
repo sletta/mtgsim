@@ -227,6 +227,10 @@ impl<'db, 'game> Turn<'db, 'game> {
             && ability.effect.is_produce_mana()
             && (ability.availability == 1.0 || rand::random::<f32>() < ability.availability)
         }) {
+            if self.cards_in_mana_pool.contains(&card.id) {
+                // already added once..
+                continue;
+            }
             match &ability.effect {
                 Effect::ProduceMana(mana) => self.add_to_mana_pool(&card, mana),
                 _ => panic!("invalid effect when build mana pool...")
@@ -620,6 +624,9 @@ impl<'db, 'game> Turn<'db, 'game> {
         for ability in card.data.abilities.iter().flatten() {
             match &ability.effect {
                 Effect::ProduceMana(pool) => {
+                    if self.cards_in_mana_pool.contains(&card.id) {
+                        continue;
+                    }
                     // Lands, mana rocks, mana dorks, etc..
                     if permanent
                         && ability.trigger.is_activated()

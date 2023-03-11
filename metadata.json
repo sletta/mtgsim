@@ -47,6 +47,7 @@
         "effect": { "type": "mana", "produce": "{C}" }
     }, {
         "cost": { "type": "tap-mana", "mana": "{C}{C}{C}" },
+        "availability": 0.5,
         "trigger": "activated",
         "effect": { "type": "draw", "count": 1 }
     } ] },
@@ -93,7 +94,8 @@
 {   "name": "Elemental Bond",               "trigger": "upkeep", "effect": { "type": "draw", "count": [0, 1, 1, 1, 2, 3] } },
 {   "name": "Garruk's Uprising",            "trigger": "upkeep", "effect": { "type": "draw", "count": [0, 1, 1, 1, 2, 3] } },
 {   "name": "Midnight Oil",                 "trigger": "upkeep", "effect": { "type": "draw", "count": 1 } },
-
+{   "name": "Mask of Memory",               "trigger": "upkeep", "effect": { "type": "draw", "count": [0, 1] } },
+{   "name": "Staff of Nin",                 "trigger": "upkeep", "effect": { "type": "draw", "count": 1 } },
 
 {   "comment": "Draw spells (activated)" },
 {   "name": "Mask of Griselbrand",
@@ -101,59 +103,31 @@
         "cost": { "type": "mana", "mana": "{C}{C}{C}" },
         "availability": 0.33,
         "effect": { "type": "draw", "count": [2, 3, 4, 7] } },
+{   "name": "Mind's Eye",
+        "trigger": "activated",
+        "cost": { "type": "mana", "mana": "{C}" },
+        "effect": { "type": "draw", "count": 1 } },
 {   "name": "Oracle's Vault",               "trigger": "activated", "availability": 0.33, "cost": "tap", "effect": { "type": "draw", "count": 1 } },
+{   "name": "Seer's Sundial",
+        "trigger": "activated",
+        "availability": 0.5,
+        "cost": { "type": "mana", "mana": "{C}{C}" },
+        "effect": { "type": "draw", "count": 1 } },
+{   "name": "Tome of Legends",
+        "trigger": "activated",
+        "availability": 0.75,
+        "cost": { "type": "tap-mana", "mana": "{C}" },
+        "effect": { "type": "draw", "count": 1 } },
 
 
-{   "comment": "Ramp (simple rocks" },
-{   "name": "Arcane Signet",                "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
-{   "name": "Boros Signet",                 "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{R/W}" } },
-{   "name": "Replicating Ring",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
-{   "name": "Sol Ring",                     "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}{C}" } },
+{   "comment": "Ramp (simple rocks)" },
 {   "name": "Chandra, Torch of Defiance",   "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{R}{R}" } },
+{   "name": "Gilded Lotus",                 "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}{B/G/R/W/U}{B/G/R/W/U}" } },
+{   "name": "Nyx Lotus",                    "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}{B/G/R/W/U}{B/G/R/W/U}" } },
+{   "name": "Replicating Ring",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
 
 
 {   "comment": "Ramp (less simple rocks)"},
-{   "name": "Boros Cluestone",
-    "abilities": [ {
-        "trigger": "activated",
-        "cost": "tap",
-        "effect": { "type": "mana", "produce": "{R/W}" }
-    }, {
-        "trigger": "activated",
-        "cost": { "type": "tap-mana-sacrifice", "mana": "{R}{W}" },
-        "effect": { "type": "draw", "count": 1 }
-    } ] },
-{   "name": "Boros Locket",
-    "abilities": [ {
-        "trigger": "activated",
-        "cost": "tap",
-        "mana": "{R/W}{R/W}{R/W}{R/W}",
-        "effect": { "type": "mana", "produce": "{R/W}" }
-    }, {
-        "trigger": "activated",
-        "cost": { "type": "tap-mana-sacrifice", "mana": "{R}{W}" },
-        "effect": { "type": "draw", "count": 1 }
-    } ] },
-{   "name": "Commander's Sphere",           "abilities": [ {
-        "trigger": "activated",
-        "cost": "tap",
-        "effect": { "type": "mana", "produce": "{B/G/R/W/U}" }
-    }, {
-        "trigger": "activated",
-        "cost": "sacrifice",
-        "availability": 0.2,
-        "effect": { "type": "draw", "count": 1 }
-    } ] },
-{   "name": "Dreamstone Hedron",
-    "abilities": [ {
-        "trigger": "activated",
-        "cost": "tap",
-        "effect": { "type": "mana", "produce": "{C}{C}{C}" }
-    }, {
-        "trigger": "activated",
-        "cost": { "type": "tap-mana-sacrifice", "mana": "{C}{C}{C}" },
-        "effect": { "type": "draw", "count": 3 }
-    } ] },
 {   "name": "Pyramid of the Pantheon",
     "cost": "tap",
     "trigger": "activated",
@@ -178,8 +152,12 @@
 
 {   "comment": "Ramp (other permanents)" },
 {   "name": "Black Market",         "trigger": "upkeep",    "availability": 0.33,    "effect": { "type": "mana", "produce": "{B}{B}{B}{B}{B}{B}{B}{B}" } },
-{   "name": "Path of Discovery",    "trigger": "upkeep",    "availability": 0.33,    "effect": { "type": "land-fetch", "to-hand": "basic land" } },
 {   "name": "Caged Sun",            "trigger": "upkeep",    "availability": 1.0,     "effect": { "type": "mana", "produce": "{B/G/R/W/U}{B/G/R/W/U}{B/G/R/W/U}{B/G/R/W/U}{B/G/R/W/U}{B/G/R/W/U}" } },
+{   "name": "Herald of War",        "trigger": "upkeep",    "availability": 1.0,     "effect": { "type": "mana", "produce": "{C}" } },
+{   "name": "Path of Discovery",    "trigger": "upkeep",    "availability": 0.33,    "effect": { "type": "land-fetch", "to-hand": "basic land" } },
+{   "name": "Starnheim Aspirant",   "trigger": "upkeep",    "availability": 0.33,    "effect": { "type": "mana", "produce": "{C}{C}" } },
+{   "name": "Sword of the Animist", "trigger": "upkeep",    "availability": 0.50,    "effect": { "type": "land-fetch", "to-battlefield": "basic land" } },
+
 
 {   "comment": "Various" },
 

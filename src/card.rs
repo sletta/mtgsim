@@ -230,6 +230,19 @@ impl<'db> std::fmt::Display for Card<'db> {
     }
 }
 
+impl std::fmt::Display for CardData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} - [{}]", self.name, self.types);
+        if let Some(mana_cost) = &self.mana_cost {
+            write!(f, " - {} ({})", mana_cost, mana_cost.cmc());
+        }
+        self.abilities.iter().flatten().for_each(|a| {
+            write!(f, " {}", a);
+        });
+        return Ok(());
+    }
+}
+
 impl std::fmt::Display for Cost {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {

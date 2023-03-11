@@ -187,9 +187,9 @@ impl DB {
     }
 
     pub fn load(&mut self, name : &str) -> Option<&card::CardData> {
-        if self.verbose {
-            println!("loading: {}", name);
-        }
+        // if self.verbose {
+        //     println!("loading: {}", name);
+        // }
         let file_name = name_to_file(name);
         let contents;
 
@@ -239,16 +239,19 @@ impl DB {
                 }
             },
             None => {
-                // println!("Missing metadata for: '{}'", entry.name);
-                // if let Some(abilities) = self.oracle_parser.parse(&json_object["oracle_text"].to_string(), &card_name) {
-                //     println!(" - parsed out: {:?}", abilities);
+                let ctx = oracle::Context {
+                    text: &json_object["oracle_text"].to_string(),
+                    card_name: &card_name
+                };
+                entry.abilities = oracle::parse(&ctx);
+                // if self.verbose {
+                //     entry.abilities.iter().flatten().for_each(|a| println!(" - parsed ability: {:?}", a));
                 // }
             }
         }
 
         if self.verbose {
-            println!("DB entry: '{}'", name);
-            println!("{:?}", entry);
+            println!(" -> {}", entry);
         }
 
         self.entries.insert(name.to_string(), entry);

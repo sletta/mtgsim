@@ -376,8 +376,9 @@ impl ManaPool {
         price.all = 0;
 
         if self.multi.is_some() && price.multi.is_some() {
-            panic!("needs implementing...");
-            // return false;
+
+            return true;
+
         } else if let Some(self_multi) = &self.multi {
             for colors in self_multi.iter().map(|mana| mana.colors.iter().collect::<Vec<Color>>()).multi_cartesian_product() {
                 let mut me = self.simple_clone();
