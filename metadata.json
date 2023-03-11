@@ -23,12 +23,15 @@
 {   "name": "Foul Orchard",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G}" } },
 {   "name": "Jungle Hollow",            "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G}" } },
 
+{   "name": "Boros Garrison",           "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{R/W}" } },
+
 {   "name": "Opal Palace",              "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
 {   "name": "Command Tower ",           "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
 
 
 {   "comment": "More complex lands:" },
-{   "name": "Blighted Woodland",            "abilities": [ {
+{   "name": "Blighted Woodland",
+    "abilities": [ {
         "cost": "tap",
         "trigger": "activated",
         "effect": { "type": "mana", "produce": "{C}" }
@@ -37,7 +40,8 @@
         "trigger": "activated",
         "effect": { "type": "land-fetch", "to-battlefield": [ "basic land", "basic land" ] }
     } ] },
-{   "name": "Bonders' Enclave",             "abilities": [ {
+{   "name": "Bonders' Enclave",
+    "abilities": [ {
         "cost": "tap",
         "trigger": "activated",
         "effect": { "type": "mana", "produce": "{C}" }

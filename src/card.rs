@@ -103,7 +103,7 @@ pub enum Types {
 
  */
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Effect {
     ProduceMana(ManaPool),
     FetchLand { to_hand: Vec<String>, to_battlefield: Vec<String> }, // like 'Cultivate'
@@ -122,7 +122,7 @@ pub enum Trigger {
 pub enum Cost {
     None,
     Tap,
-    #[allow(dead_code)] Sacrifice,
+    Sacrifice,
     Mana(ManaPool),
     TapSacrifice,
     TapMana(ManaPool),

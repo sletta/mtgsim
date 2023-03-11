@@ -1,10 +1,12 @@
 use crate::mana;
 use crate::card;
+use crate::oracle;
 
 pub struct DB {
+    pub verbose : bool,
     pub entries : std::collections::HashMap<String, card::CardData>,
+
     metadata : std::collections::HashMap<String, json::JsonValue>,
-    pub verbose : bool
 }
 
 fn name_to_file(name : &str) -> String {
@@ -147,8 +149,6 @@ fn parse_availability(object : &json::JsonValue) -> f32 {
 }
 
 fn parse_ability(object : &json::JsonValue) -> Result<card::Ability, String> {
-    println!(" -- parsing ability: {:?}", object);
-
     return Ok(card::Ability {
         trigger: parse_trigger(object)?,
         cost : parse_cost(object)?,
@@ -210,9 +210,10 @@ impl DB {
         assert!(json_object.is_object());
 
         let type_line = json_object["type_line"].to_string();
+        let card_name = json_object["name"].to_string();
 
         let mut entry = card::CardData {
-            name: json_object["name"].to_string(),
+            name: card_name.clone(),
             cmc: json_object["cmc"].as_f32().expect("cmc is not a number!") as u32,
             mana_cost: match mana::ManaPool::new_from_string(&json_object["mana_cost"].to_string()) {
                 Ok(pool) => Some(pool),
@@ -237,7 +238,12 @@ impl DB {
                     Ok(_) => { }
                 }
             },
-            None => println!("Missing metadata for: '{}'", entry.name)
+            None => {
+                // println!("Missing metadata for: '{}'", entry.name);
+                // if let Some(abilities) = self.oracle_parser.parse(&json_object["oracle_text"].to_string(), &card_name) {
+                //     println!(" - parsed out: {:?}", abilities);
+                // }
+            }
         }
 
         if self.verbose {

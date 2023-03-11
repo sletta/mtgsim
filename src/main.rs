@@ -3,6 +3,7 @@ mod mana;
 mod card;
 mod game;
 mod zone;
+mod oracle;
 
 use std::io::BufRead;
 use regex::Regex;

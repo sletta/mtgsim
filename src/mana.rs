@@ -227,6 +227,12 @@ impl ManaPool {
         return Ok(pool);
     }
 
+    pub fn new_from_single(mana: &Mana) -> Self {
+        let mut pool = ManaPool::new();
+        pool.add_mana(mana);
+        return pool;
+    }
+
 
     pub fn add_mana(&mut self, m: &Mana) {
         if m.is_colorless() {

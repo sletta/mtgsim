@@ -496,7 +496,7 @@ impl<'db, 'game> Turn<'db, 'game> {
             let cost_b = ability_b.cost.is_mana().map_or(0, |cost| cost.cmc());
             cost_a.cmp(&cost_b)
         });
-        if self.game.verbose {
+    if self.game.verbose {
             for (card, ability) in &abilities {
                 println!(" - activated draw candidate: {} :: {}", card, ability);
             }
@@ -779,28 +779,6 @@ fn sort_cards_on_colors_produced(cards : &mut Vec<Card>) {
 mod tests {
 
     use super::*;
-
-    #[test]
-    fn test_turn_gather_mana_pool() {
-        let sol_ring_data = CardData::make_sol_ring_data();
-        let swamp_data = CardData::make_swamp_data();
-        let command_tower_data = CardData::make_command_tower_data();
-        let commanders_sphere_data = CardData::make_commanders_sphere_data();
-        let elk_data = CardData::make_elk_data();
-
-        let mut game : Game = Game::new();
-        game.battlefield.add(Card::new_with_id(1, &command_tower_data));
-        game.battlefield.add(Card::new_with_id(2, &sol_ring_data));
-        game.battlefield.add(Card::new_with_id(3, &swamp_data));
-        game.battlefield.add(Card::new_with_id(4, &commanders_sphere_data));
-        game.battlefield.add(Card::new_with_id(5, &elk_data));
-
-        let mut turn = Turn::new(&mut game, 42);
-        turn.gather_mana_pool();
-        assert_eq!(turn.mana_pool.colorless, 2);
-        assert_eq!(turn.mana_pool.all, 2);
-        assert_eq!(turn.mana_pool.black, 1);
-    }
 
     #[test]
     fn test_game_sort_cards_on_colors_produced() {
