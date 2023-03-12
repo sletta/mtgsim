@@ -4,6 +4,7 @@ mod card;
 mod game;
 mod zone;
 mod oracle;
+mod stats;
 
 use std::io::BufRead;
 use regex::Regex;
@@ -136,77 +137,12 @@ fn main() {
 
     let mut stats : Vec<game::GameStats> = Vec::new();
 
-    for _ in 0..args.games {
+    for i in 0..args.games {
         let mut game = stem_game.clone();
+        game.game_stats.game_number = i + 1;
         game.play(&settings);
         stats.push(game.game_stats.clone());
     }
 
-    show_statistics(&stats, &settings);
-}
-
-fn average(sum: u32, count: usize) -> f32 {
-    return sum as f32 / count as f32;
-}
-
-fn show_statistics(stats: &Vec<game::GameStats>, settings: &game::Settings) {
-    println!("Played {} games of {} turns each:", stats.len(), settings.turn_count);
-
-    let last_turn_index : usize = settings.turn_count as usize - 1;
-
-    let commander_average_turn = average(stats.iter().map(|s| s.turn_commander_played).sum(), stats.len());
-    println!(" - commander arrives on turn: {:.2}", commander_average_turn);
-
-    let total_turn_count = stats.len() * (settings.turn_count as usize);
-
-    let draw_curve = average(stats.iter().map(|s| s.turns_stats.iter()).flatten().map(|s| s.cards_drawn).sum(), total_turn_count);
-    println!(" - deck speed: {:.2} cards / round (average)", draw_curve);
-
-    let ratio_milled_out = stats.iter().map(|s| s.out_of_cards as u32 as f32).sum::<f32>() / stats.len() as f32;
-    println!(" - milled out: {:.3}", ratio_milled_out);
-
-    let mut mana_available_curve : f32 = 0.0;
-    let mut mana_spending_curve : f32 = 0.0;
-    for s in stats {
-        let last_turn = &s.turns_stats[last_turn_index];
-        mana_available_curve += last_turn.mana_available as f32;
-        mana_spending_curve += last_turn.mana_spent as f32;
-    }
-    mana_available_curve /= total_turn_count as f32;
-    mana_spending_curve /= total_turn_count as f32;
-
-    println!(" - ramp curve: {:.2} mana / turns (average)", mana_available_curve);
-    println!(" - mana spending curve: {:.2} mana / turns (average), effectiveness: {}", mana_spending_curve, mana_spending_curve / mana_available_curve);
-
-    for round in 0..settings.turn_count {
-        let i : usize = round as usize;
-
-        let lands_played = average(stats.iter().map(|s| s.turns_stats[i].lands_played).sum(), stats.len());
-        let lands_cheated = average(stats.iter().map(|s| s.turns_stats[i].lands_cheated).sum(), stats.len());
-        let cards_drawn = average(stats.iter().map(|s| s.turns_stats[i].cards_drawn).sum(), stats.len());
-        let cards_played = average(stats.iter().map(|s| s.turns_stats[i].cards_played).sum(), stats.len());
-        let cards_in_hand = average(stats.iter().map(|s| s.turns_stats[i].cards_in_hand).sum(), stats.len());
-        let mana_available = average(stats.iter().map(|s| s.turns_stats[i].mana_available).sum(), stats.len());
-        let mana_spent = average(stats.iter().map(|s| s.turns_stats[i].mana_spent).sum(), stats.len());
-
-        let mut counted_effectiveness = 0.0;
-        let mana_effectiveness : f32 = stats.iter()
-            .map(|s| &s.turns_stats[i])
-            .filter(|ts| ts.mana_available > 0)
-            .map(|ts| {
-                counted_effectiveness += 1.0;
-                ts.mana_spent as f32 / ts.mana_available as f32
-            }).sum::<f32>() / counted_effectiveness;
-
-        println!(" - turn #{:2}: cards(drawn={:.1}, played={:.1} in-hand={:.1}), lands(played={:.2}, cheated={:.1}), mana(spent={:.2} total={:.2}, effectiveness={:.2})",
-                round + 1,
-                cards_drawn,
-                cards_played,
-                cards_in_hand,
-                lands_played,
-                lands_cheated,
-                mana_spent,
-                mana_available,
-                mana_effectiveness);
-    }
+    stats::show_statistics(&stats, &settings);
 }

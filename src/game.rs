@@ -55,6 +55,7 @@ pub struct TurnStats {
 
 #[derive(Debug, Clone)]
 pub struct GameStats {
+    pub game_number: u32,
     pub mulligan_count: u32,
     pub turn_commander_played : u32,
     pub turns_stats : Vec<TurnStats>,
@@ -71,6 +72,7 @@ impl<'db> Game<'db> {
             graveyard: Zone::new("Graveyard"),
             verbose: false,
             game_stats : GameStats {
+                game_number: 0,
                 mulligan_count: 0,
                 turn_commander_played: 0,
                 turns_stats: Vec::new(),
