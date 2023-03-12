@@ -17,7 +17,7 @@ fn parse_produced_mana(value : &json::JsonValue) -> Option<mana::Mana> {
     if value.is_array() {
         let mut colors = mana::Mana::new();
         for i in 0..value.len() {
-            colors.set_from_string(value[i].to_string().as_str());
+            colors.set_from_string(value[i].to_string().as_str()).ok();
         }
         return Some(colors);
     }
@@ -223,7 +223,8 @@ impl DB {
             types: card::parse_types(&type_line),
             produced_mana: parse_produced_mana(&json_object["produced_mana"]),
             enters_tapped: parse_enters_tapped(&name, &json_object["oracle_text"].to_string()),
-            abilities: None
+            abilities: None,
+            additional_cost: None
         };
 
         match self.metadata.get(name) {
@@ -244,9 +245,7 @@ impl DB {
                     card_name: &card_name
                 };
                 entry.abilities = oracle::parse(&ctx);
-                // if self.verbose {
-                //     entry.abilities.iter().flatten().for_each(|a| println!(" - parsed ability: {:?}", a));
-                // }
+                entry.additional_cost = oracle::parse_additional_cost(&ctx);
             }
         }
 

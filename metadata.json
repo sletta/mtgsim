@@ -14,7 +14,6 @@
 {   "name": "Castle Garenbrig",         "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{G}" } },
 
 {   "name": "Cascading Cataracts",      "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
-{   "name": "Guildless Commons",        "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
 {   "name": "High Market",              "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
 {   "name": "Karn's Bastion",           "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
 {   "name": "Temple of the False God",  "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
@@ -22,12 +21,6 @@
 {   "name": "Temple of Malady",         "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G}" } },
 {   "name": "Foul Orchard",             "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G}" } },
 {   "name": "Jungle Hollow",            "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G}" } },
-
-{   "name": "Boros Garrison",           "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{R/W}" } },
-
-{   "name": "Opal Palace",              "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
-{   "name": "Command Tower ",           "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{B/G/R/W/U}" } },
-
 
 {   "comment": "More complex lands:" },
 {   "name": "Blighted Woodland",

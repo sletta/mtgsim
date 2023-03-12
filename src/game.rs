@@ -396,6 +396,22 @@ impl<'db, 'game> Turn<'db, 'game> {
             println!(" - trying to play lands, {} in hand", lands_in_hand.len());
         }
 
+        // Check if one or more of the lands have a playing cost that we won't
+        // be able to pay, and if so, remove that land from the pool we're
+        // looking at. Aka, cards like Guildless Commons and Boros Garisson.
+        let lands_in_hand_with_cost = lands_in_hand
+            .iter()
+            .any(|l| l.data.additional_cost == Some(AdditionalCost::ReturnLandToHand));
+        if lands_in_hand_with_cost {
+            let lands_in_play = self.game.battlefield.query(Types::Land);
+            let lands_in_play_without_cost = lands_in_play
+                .iter()
+                .any(|l| l.data.additional_cost != Some(AdditionalCost::ReturnLandToHand));
+            if !lands_in_play_without_cost {
+                lands_in_hand.retain(|l| l.data.additional_cost != Some(AdditionalCost::ReturnLandToHand));
+            }
+        }
+
         sort_cards_on_colors_produced(&mut lands_in_hand);
 
         let maybe_wanted_color = Self::evaluate_desired_mana_colors(&self.game.hand, &self.mana_pool);
@@ -662,6 +678,12 @@ impl<'db, 'game> Turn<'db, 'game> {
             }
         }
 
+        if let Some(additional_cost) = &card.data.additional_cost {
+            match additional_cost {
+                AdditionalCost::ReturnLandToHand => self.return_land_to_hand()
+            }
+        }
+
         if permanent {
             if self.game.verbose {
                 println!(" - {} -> battlefield!", card);
@@ -768,6 +790,36 @@ impl<'db, 'game> Turn<'db, 'game> {
         }
 
         return None;
+    }
+
+    fn return_land_to_hand(&mut self) {
+        let mut lands_in_play = self.game.battlefield.query(Types::Land);
+        lands_in_play.sort_by(|a, b| {
+            let a_has_cost = a.data.additional_cost.is_some();
+            let b_has_cost = b.data.additional_cost.is_some();
+
+            if a_has_cost == b_has_cost {
+                let a_ready = !a.data.enters_tapped;
+                let b_ready = !b.data.enters_tapped;
+                if a_ready == b_ready {
+                    return std::cmp::Ordering::Equal;
+                } else if a_ready {
+                    return std::cmp::Ordering::Less;
+                } else {
+                    return std::cmp::Ordering::Greater;
+                }
+            } else if b_has_cost {
+                return std::cmp::Ordering::Less;
+            } else {
+                return std::cmp::Ordering::Greater;
+            }
+        });
+
+        let land = self.game.battlefield.take(lands_in_play[0].id).unwrap();
+        if self.game.verbose {
+            println!(" - returning {} to hand", land);
+        }
+        self.game.hand.add(land);
     }
 }
 

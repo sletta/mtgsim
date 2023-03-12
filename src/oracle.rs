@@ -16,6 +16,7 @@ pub fn parse(ctx: &Context) -> Option<Vec<card::Ability>> {
     let mut is_mana_producer = false;
     let mut is_sac_for_cards = false;
 
+    // Parse activated abilities
     for (lhs, rhs) in ctx.text.split("\n")
         .filter(|line| line.contains(":"))
         .map(|line| {
@@ -126,6 +127,23 @@ fn parse_effect(effect_string: &str, _ctx: &Context) -> Result<Option<card::Effe
     }
 
     return Ok(None);
+}
+
+pub fn parse_additional_cost(ctx: &Context) -> Option<card::AdditionalCost>
+{
+    lazy_static! {
+        static ref RETURN_LAND_TO_HAND : Regex = Regex::new(r"^When (.*) enters the battlefield, return a land you control to its owner's hand.$").unwrap();
+    }
+
+    for line in ctx.text.split("\n").map(|l| l.trim()) {
+        if let Some(cap) = RETURN_LAND_TO_HAND.captures(line) {
+            if &cap[1] == ctx.card_name {
+                return Some(card::AdditionalCost::ReturnLandToHand);
+            }
+        }
+    }
+
+    return None;
 }
 
 

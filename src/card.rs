@@ -137,6 +137,11 @@ pub struct Ability {
     pub availability: f32,
 }
 
+#[derive(Debug, PartialEq)]
+pub enum AdditionalCost {
+    ReturnLandToHand,
+}
+
 #[derive(Debug)]
 pub struct CardData {
     pub name: String,
@@ -149,6 +154,7 @@ pub struct CardData {
     pub enters_tapped: bool,
 
     pub abilities: Option<Vec<Ability>>,
+    pub additional_cost: Option<AdditionalCost>,
 }
 
 #[derive(Debug, Clone)]
@@ -232,12 +238,15 @@ impl<'db> std::fmt::Display for Card<'db> {
 
 impl std::fmt::Display for CardData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} - [{}]", self.name, self.types);
+        write!(f, "{} - [{}]", self.name, self.types)?;
         if let Some(mana_cost) = &self.mana_cost {
-            write!(f, " - {} ({})", mana_cost, mana_cost.cmc());
+            write!(f, " - {} ({})", mana_cost, mana_cost.cmc())?;
+        }
+        if let Some(additional_cost) = &self.additional_cost {
+            write!(f, " {}", additional_cost)?;
         }
         self.abilities.iter().flatten().for_each(|a| {
-            write!(f, " {}", a);
+            write!(f, " {}", a).ok();
         });
         return Ok(());
     }
@@ -281,6 +290,14 @@ impl std::fmt::Display for Effect {
 impl std::fmt::Display for Ability {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Ability({} {} {})", self.effect, self.trigger, self.cost)
+    }
+}
+
+impl std::fmt::Display for AdditionalCost {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            AdditionalCost::ReturnLandToHand => write!(f, "Cost(return-land-to-hand)")
+        }
     }
 }
 
