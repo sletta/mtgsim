@@ -376,9 +376,20 @@ impl ManaPool {
         price.all = 0;
 
         if self.multi.is_some() && price.multi.is_some() {
-
-            return true;
-
+            let self_multi = self.multi.as_ref().unwrap();
+            let price_multi = price.multi.as_ref().unwrap();
+            for self_colors in self_multi.iter().map(|mana| mana.colors.iter().collect::<Vec<Color>>()).multi_cartesian_product() {
+                let mut me = self.simple_clone();
+                self_colors.iter().for_each(|color| me.add_color(&color));
+                for price_colors in price_multi.iter().map(|mana| mana.colors.iter().collect::<Vec<Color>>()).multi_cartesian_product() {
+                    let mut other = price.simple_clone();
+                    price_colors.iter().for_each(|color| other.add_color(&color));
+                    if Self::check_simple_pools(me.simple_clone(), other) {
+                        return true;
+                    }
+                }
+            }
+            return false;
         } else if let Some(self_multi) = &self.multi {
             for colors in self_multi.iter().map(|mana| mana.colors.iter().collect::<Vec<Color>>()).multi_cartesian_product() {
                 let mut me = self.simple_clone();
@@ -592,6 +603,15 @@ mod tests {
         assert!(!rakdos.can_pay_for(&ManaPool::new_from_sequence(&vec![GREEN])));
         assert!(rakdos.can_pay_for(&ManaPool::new_from_sequence(&vec![RED])));
         assert!(!rakdos.can_pay_for(&ManaPool::new_from_sequence(&vec![WHITE])));
+
+        let golgari = ManaPool::new_from_sequence(&vec![Mana::make_dual(Color::Black, Color::Green)]);
+        assert!(rakdos.can_pay_for(&golgari));
+        assert!(golgari.can_pay_for(&rakdos));
+
+        let golgari_and_rakdos = golgari.expanded(&rakdos);
+        let dimir_times_two = ManaPool::new_from_sequence(&vec![Mana::make_dual(Color::Black, Color::Blue), Mana::make_dual(Color::Black, Color::Blue)]);
+        assert!(dimir_times_two.can_pay_for(&golgari_and_rakdos));
+        assert!(golgari_and_rakdos.can_pay_for(&dimir_times_two));
     }
 
     #[test]

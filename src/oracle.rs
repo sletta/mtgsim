@@ -93,6 +93,7 @@ fn parse_cost(cost_string: &str, ctx: &Context) -> Result<Option<card::Cost>, St
 
 fn parse_effect(effect_string: &str, _ctx: &Context) -> Result<Option<card::Effect>, String> {
     lazy_static! {
+
         static ref ADD_MANA_X: Regex = Regex::new(r"^Add ((\{\w\})+)\.").unwrap();
         static ref ADD_MANA_X_OR_Y: Regex = Regex::new(r"^Add \{(\w)\} or \{(\w)\}.").unwrap();
         static ref ADD_MANA_COMMANDER: Regex = Regex::new("Add one mana of any color in your commander's color identity.").unwrap();

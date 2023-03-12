@@ -323,6 +323,7 @@ impl<'db, 'game> Turn<'db, 'game> {
                             mana_pool.remove_exact_pool(&produced);
                         }
                     }
+
                     if mana_pool.can_also_pay_for(&self.mana_spent, &ability_cost) == None {
                         continue;
                     }
