@@ -21,17 +21,18 @@ fn read_deck_list(file_name : &str) -> Result<Vec<DeckListEntry>, String> {
     let file = std::fs::File::open(file_name).unwrap();
     let lines = std::io::BufReader::new(file).lines();
     let re = Regex::new(r"^(\d+)x?\s+([\w\s',\-\\/]+)").unwrap();
-    for maybe_line in lines {
-        match maybe_line {
-            Err(_) => (),
-            Ok(line) => {
-                let captures = re.captures(&line).unwrap();
+    for line in lines.filter(|l| l.is_ok()).map(|l| l.unwrap()) {
+        match re.captures(&line) {
+            Some(captures) => {
                 let count = captures.get(1).unwrap().as_str().parse::<u32>().unwrap();
                 let name = captures.get(2).unwrap().as_str();
                 deck_list.push(DeckListEntry {
                     count: count,
                     name: name.trim().to_lowercase()
-                });
+                })
+            },
+            None => {
+                panic!("failed to parse deck_list, line='{}'", line);
             }
         }
     }

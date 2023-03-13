@@ -318,7 +318,8 @@ impl CardData {
                 cost: Cost::Tap,
                 effect: Effect::ProduceMana(ManaPool::new_from_sequence(&vec![COLORLESS, COLORLESS])),
                 availability: 1.0
-            }])
+            }]),
+            additional_cost: None
         };
     }
 
@@ -337,7 +338,8 @@ impl CardData {
                 cost: Cost::Tap,
                 effect: Effect::ProduceMana(ManaPool::new_from_sequence(&vec![ALL])),
                 availability: 1.0
-            }])
+            }]),
+            additional_cost: None
         };
     }
 
@@ -356,7 +358,8 @@ impl CardData {
                 cost: Cost::Tap,
                 effect: Effect::ProduceMana(ManaPool::new_from_sequence(&vec![WHITE])),
                 availability: 1.0
-            }])
+            }]),
+            additional_cost: None
         };
     }
 
@@ -375,7 +378,8 @@ impl CardData {
                 cost: Cost::Tap,
                 effect: Effect::ProduceMana(ManaPool::new_from_sequence(&vec![BLACK])),
                 availability: 1.0
-            }])
+            }]),
+            additional_cost: None
         };
     }
 
@@ -394,7 +398,8 @@ impl CardData {
                 cost: Cost::Tap,
                 effect: Effect::ProduceMana(ManaPool::new_from_sequence(&vec![ALL])),
                 availability: 1.0
-            }])
+            }]),
+            additional_cost: None
         };
     }
 
@@ -413,7 +418,8 @@ impl CardData {
                 cost: Cost::Tap,
                 effect: Effect::ProduceMana(ManaPool::new_from_sequence(&vec![Mana::make_dual(Color::Black, Color::Green)])),
                 availability: 1.0
-            }])
+            }]),
+            additional_cost: None
         };
     }
 
@@ -427,7 +433,8 @@ impl CardData {
             types: enumflags2::make_bitflags!(Types::{Creature}),
             produced_mana: None,
             enters_tapped: false,
-            abilities: None
+            abilities: None,
+            additional_cost: None
         };
     }
 }

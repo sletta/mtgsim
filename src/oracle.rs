@@ -97,6 +97,7 @@ fn parse_effect(effect_string: &str, _ctx: &Context) -> Result<Option<card::Effe
 
         static ref ADD_MANA_X: Regex = Regex::new(r"^Add ((\{\w\})+)\.").unwrap();
         static ref ADD_MANA_X_OR_Y: Regex = Regex::new(r"^Add \{(\w)\} or \{(\w)\}.").unwrap();
+        static ref ADD_MANA_X_Y_OR_Z: Regex = Regex::new(r"^Add \{(\w)\}, \{(\w)\}, or \{(\w)\}.").unwrap();
         static ref ADD_MANA_COMMANDER: Regex = Regex::new("Add one mana of any color in your commander's color identity.").unwrap();
         static ref DRAW_A_CARD: Regex = Regex::new("^Draw a card.").unwrap();
         static ref DRAW_TWO_CARDS: Regex = Regex::new("^Draw two cards.").unwrap();
@@ -111,6 +112,13 @@ fn parse_effect(effect_string: &str, _ctx: &Context) -> Result<Option<card::Effe
         let mut mana = mana::Mana::new();
         mana.set_from_string(&cap[1])?;
         mana.set_from_string(&cap[2])?;
+        return Ok(Some(card::Effect::ProduceMana(mana::ManaPool::new_from_single(&mana))));
+
+    } else if let Some(cap) = ADD_MANA_X_Y_OR_Z.captures(effect_string) {
+        let mut mana = mana::Mana::new();
+        mana.set_from_string(&cap[1])?;
+        mana.set_from_string(&cap[2])?;
+        mana.set_from_string(&cap[3])?;
         return Ok(Some(card::Effect::ProduceMana(mana::ManaPool::new_from_single(&mana))));
 
     } else if ADD_MANA_COMMANDER.is_match(effect_string) {
@@ -234,4 +242,26 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn test_oracle_parse_arcane_sanctum() {
+        let arcane_sanctum_text = "{T}: Add {W}, {U}, or {B}.";
+        match parse(&Context { text: arcane_sanctum_text, card_name: "Arcane Sanctum" }) {
+            None => assert!(false),
+            Some(abilities) => {
+                assert_eq!(abilities.len(), 1);
+                let mana_ability = &abilities[0];
+
+                let mana = mana::Mana::make_triple(mana::Color::White,
+                                                   mana::Color::Blue,
+                                                   mana::Color::Black);
+                let pool = mana::ManaPool::new_from_single(&mana);
+
+                assert_eq!(mana_ability.trigger, card::Trigger::Activated);
+                assert_eq!(mana_ability.cost, card::Cost::Tap);
+                assert_eq!(mana_ability.effect, card::Effect::ProduceMana(pool));
+            }
+        }
+    }
+
 }

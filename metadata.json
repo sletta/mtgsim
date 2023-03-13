@@ -13,7 +13,6 @@
 {   "name": "The Hunter Maze",          "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{G}" } },
 {   "name": "Castle Garenbrig",         "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{G}" } },
 
-{   "name": "Cascading Cataracts",      "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
 {   "name": "High Market",              "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
 {   "name": "Karn's Bastion",           "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
 {   "name": "Temple of the False God",  "cost": "tap", "trigger": "activated", "effect": { "type": "mana", "produce": "{C}" } },
